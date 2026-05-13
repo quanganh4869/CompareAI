@@ -1,0 +1,63 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Build and packaging artifacts
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# Test and coverage
+.pytest_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Type check and lint caches
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+.pre-commit-cache/
+chat-backend/pytest-cache-files-*/
+
+# Logs and runtime outputs
+*.log
+*.out
+*.err
+chat-backend/envcheck.out.log
+chat-backend/uvicorn.out.log
+chat-backend/uvicorn.err.log
+
+# Local environment and secrets
+.env
+**/.env
+**/*.keys
+chat-backend/app/configuration/.keys/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+
+# Node artifacts accidentally generated in backend workspace
+**/node_modules/
+chat-backend/app/package-lock.json
+chat-backend/app/package.json
+chat-backend/package-lock.json

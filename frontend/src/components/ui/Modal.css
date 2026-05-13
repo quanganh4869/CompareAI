@@ -1,0 +1,39 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 23, 48, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+.modal-content {
+  position: relative;
+  width: min(100%, 38rem);
+  border-radius: 1rem;
+  background: #ffffff;
+  border: 1px solid #dce5ef;
+  box-shadow: 0 24px 50px rgba(8, 23, 48, 0.22);
+  padding: 1.1rem;
+}
+
+.modal-title {
+  margin: 0 1.75rem 0.75rem 0;
+  font-size: 1.1rem;
+}
+
+.modal-body {
+  color: #2c3f5b;
+}
+
+.modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: #eef3f9;
+  cursor: pointer;
+}

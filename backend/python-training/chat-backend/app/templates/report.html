@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Báo cáo phân tích - Antigravity AI{% endblock %}
+{% block breadcrumb %}Báo cáo chi tiết{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+        
+        <!-- Left Column: Sticky Summary -->
+        <div class="lg:col-span-4 lg:sticky lg:top-28 space-y-6">
+            <!-- Score Card -->
+            <div class="bg-primary rounded-[2.5rem] p-10 text-white shadow-2xl shadow-indigo-200 overflow-hidden relative">
+                <div class="relative z-10">
+                    <h3 class="text-indigo-200 text-sm font-black uppercase tracking-widest mb-6">Độ phù hợp tổng thể</h3>
+                    <div class="flex items-baseline gap-1 mb-2">
+                        <span class="text-7xl font-black">{{ result.overall_score }}</span>
+                        <span class="text-2xl font-bold text-indigo-300">%</span>
+                    </div>
+                    <div class="h-2 w-full bg-indigo-400/30 rounded-full mt-6 overflow-hidden">
+                        <div class="h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.5)] transition-all duration-1000" style="width: {{ result.overall_score }}%"></div>
+                    </div>
+                </div>
+                <!-- Decorative background -->
+                <div class="absolute -right-10 -bottom-10 h-40 w-40 bg-white/10 rounded-full blur-3xl"></div>
+            </div>
+
+            <!-- Candidate Info -->
+            <div class="bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="h-16 w-16 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100">
+                        <svg class="h-8 w-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </div>
+                    <div>
+                        <h4 class="text-xl font-black text-slate-900">{{ candidate_name }}</h4>
+                        <p class="text-sm text-slate-500 font-medium">Senior Backend Engineer</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-4 pt-4 border-t border-slate-100">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Kinh nghiệm</span>
+                        <span class="text-slate-900 font-bold">5+ Năm</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Học vấn</span>
+                        <span class="text-slate-900 font-bold">Đại học Bách Khoa</span>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="window.print()" class="w-full py-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm flex items-center justify-center gap-2">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                Xuất báo cáo PDF
+            </button>
+        </div>
+
+        <!-- Right Column: Deep Analysis Content -->
+        <div class="lg:col-span-8 space-y-10">
+            <!-- Executive Summary -->
+            <section class="bg-white rounded-[2.5rem] border border-slate-200 p-12 shadow-sm">
+                <h2 class="text-2xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-3">
+                    <span class="h-8 w-8 bg-indigo-50 rounded-lg flex items-center justify-center text-primary">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </span>
+                    Tóm tắt đánh giá
+                </h2>
+                <div class="text-slate-600 text-lg leading-[1.8] font-medium space-y-6 whitespace-pre-line">
+                    {{ result.executive_summary }}
+                </div>
+            </section>
+
+            <!-- Skill Gap -->
+            <section class="bg-white rounded-[2.5rem] border border-slate-200 p-12 shadow-sm">
+                <h2 class="text-2xl font-black text-slate-900 tracking-tight mb-8">Phân tích kỹ năng</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div>
+                        <h4 class="text-xs font-black text-emerald-600 uppercase tracking-widest mb-4">Kỹ năng tương ứng</h4>
+                        <div class="flex flex-wrap gap-2">
+                            {% for skill in result.skill_gap.matched_hard_skills %}
+                            <span class="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-bold border border-emerald-100">{{ skill }}</span>
+                            {% endfor %}
+                            {% for skill in result.skill_gap.matched_soft_skills %}
+                            <span class="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-bold border border-indigo-100">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-black text-rose-600 uppercase tracking-widest mb-4">Kỹ năng còn thiếu</h4>
+                        <div class="flex flex-wrap gap-2">
+                            {% for skill in result.skill_gap.missing_hard_skills %}
+                            <span class="px-4 py-2 bg-rose-50 text-rose-700 rounded-xl text-sm font-bold border border-rose-100">{{ skill }}</span>
+                            {% endfor %}
+                            {% for skill in result.skill_gap.missing_soft_skills %}
+                            <span class="px-4 py-2 bg-amber-50 text-amber-700 rounded-xl text-sm font-bold border border-amber-100">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Deep Experience Alignment -->
+            <section class="space-y-6">
+                <h2 class="text-2xl font-black text-slate-900 tracking-tight">Đối chiếu kinh nghiệm thực tế</h2>
+                {% for item in result.deep_experience_alignment %}
+                <div class="bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm hover:border-primary/30 transition-colors">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                        <div>
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Yêu cầu từ JD</span>
+                            <p class="text-slate-900 font-bold leading-relaxed">{{ item.requirement }}</p>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Thực tế ứng viên</span>
+                            <p class="text-slate-900 font-bold leading-relaxed">{{ item.candidate_reality }}</p>
+                        </div>
+                    </div>
+                    <div class="p-6 rounded-2xl {% if item.severity == 'High' %}bg-rose-50 border border-rose-100{% else %}bg-amber-50 border border-amber-100{% endif %}">
+                        <div class="flex items-start gap-3">
+                            <span class="mt-1 flex-shrink-0 h-5 w-5 {% if item.severity == 'High' %}text-rose-500{% else %}text-amber-500{% endif %}">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            </span>
+                            <div class="space-y-1">
+                                <span class="text-[10px] font-black {% if item.severity == 'High' %}text-rose-600{% else %}text-amber-600{% endif %} uppercase tracking-widest">HR Comment</span>
+                                <p class="text-sm font-bold text-slate-800 leading-relaxed">{{ item.hr_comment }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </section>
+
+            <!-- Actionable Recommendations -->
+            <section class="bg-white rounded-[2.5rem] border border-slate-200 p-12 shadow-sm">
+                <h2 class="text-2xl font-black text-slate-900 tracking-tight mb-10">Kiến nghị & Giải pháp</h2>
+                <div class="space-y-12">
+                    {% for rec in result.actionable_recommendations %}
+                    <div class="relative pl-10 border-l-4 border-indigo-100">
+                        <!-- Number Circle -->
+                        <div class="absolute -left-[22px] top-0 h-10 w-10 bg-primary text-white rounded-xl flex items-center justify-center font-black shadow-lg shadow-indigo-200 border-4 border-white">
+                            {{ loop.index }}
+                        </div>
+                        
+                        <div class="space-y-6">
+                            <div>
+                                <h4 class="text-lg font-black text-slate-900 mb-2">Vấn đề: {{ rec.issue }}</h4>
+                                <p class="text-slate-500 font-medium leading-relaxed">{{ rec.solution }}</p>
+                            </div>
+                            
+                            <div class="bg-slate-50 rounded-2xl p-6 border-l-4 border-primary">
+                                <span class="text-[10px] font-black text-primary uppercase tracking-widest mb-3 block">Mẫu viết lại (CV Rewrite Example)</span>
+                                <p class="text-slate-700 italic font-medium leading-relaxed">"{{ rec.cv_rewrite_example }}"</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

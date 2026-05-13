@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CV Matcher AI - Antigravity Expert{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#6366F1',
+                        background: '#F9FAFB',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F9FAFB; font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(99, 102, 241, 0.1);
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="text-slate-900 antialiased">
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside class="fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-200 z-50">
+            <div class="flex items-center gap-3 px-6 py-8">
+                <div class="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                    <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <span class="text-xl font-black tracking-tight text-slate-900">Antigravity AI</span>
+            </div>
+            
+            <nav class="mt-4 px-4 space-y-1">
+                <a href="/dashboard" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {% if active_page == 'dashboard' %}bg-indigo-50 text-primary{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                    Dashboard
+                </a>
+                <a href="/library" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all {% if active_page == 'library' %}bg-indigo-50 text-primary{% else %}text-slate-500 hover:bg-slate-50 hover:text-slate-900{% endif %}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 012-2M5 11V9a2 2 0 01-2-2m0 0V5a2 2 0 012-2h6.5L12 4.5 13.5 3H19a2 2 0 012 2v4M5 7h14"/></svg>
+                    Thư viện
+                </a>
+                <div class="pt-4 pb-2 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Hệ thống</div>
+                <a href="/settings" class="flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all text-slate-500 hover:bg-slate-50">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Cấu hình
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 ml-64">
+            <!-- Header -->
+            <header class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 flex items-center justify-between px-10">
+                <div class="flex items-center gap-2 text-sm font-medium text-slate-500">
+                    <span class="hover:text-primary cursor-pointer transition-colors">Trang chủ</span>
+                    <span class="text-slate-300">/</span>
+                    <span class="text-slate-900 font-bold">{% block breadcrumb %}Dashboard{% endblock %}</span>
+                </div>
+                
+                <div class="flex items-center gap-6">
+                    <button class="relative p-2 text-slate-400 hover:text-primary transition-colors">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                        <span class="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
+                    </button>
+                    <div class="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200 overflow-hidden cursor-pointer hover:border-primary transition-all">
+                        <img src="https://ui-avatars.com/api/?name=Admin&background=6366F1&color=fff" alt="User">
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="p-10">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

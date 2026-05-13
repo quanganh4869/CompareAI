@@ -1,0 +1,354 @@
+// DBML for dbdiagram.io (ERD)
+// Scope requested by you:
+// - Backend: only tables related to login/authentication (keep as source-of-truth).
+// - Domain (CV/JD/Interview): inferred from frontend flows + localStorage shapes, meant to be configurable.
+//
+// Backend models source: backend/backend/app/db/models/*.py (SQLModel)
+// Frontend inference source: frontend/src/pages/InterviewLegacyPage.jsx, frontend/src/pages/InterviewWizardPage.jsx,
+// and related modal components for CV/JD/Practice Sessions.
+
+Project ai_interview_assistant {
+  database_type: "PostgreSQL"
+  Note: "Auth tables reflect backend SQLModel. Domain tables are inferred from frontend and intended to be customized."
+}
+
+///////
+// AUTH (Backend source-of-truth)
+///////
+
+Table users {
+  id uuid [pk, note: "UUID, default uuid4()"]
+
+  email_hash varchar(64) [not null, unique, note: "Hashed email, indexed"]
+  email_encrypted text [not null]
+
+  name_hash varchar(64) [not null]
+  name_encrypted text [not null]
+
+  avatar_url text [null]
+
+  is_online boolean [not null, default: false]
+  last_seen timestamp [null, note: "timezone-aware in code"]
+  created_at timestamp [not null, note: "timezone-aware; default utc_now()"]
+
+  Indexes {
+    (email_hash) [unique, name: "ux_users_email_hash"]
+  }
+}
+
+Table auth_providers {
+  id uuid [pk, note: "UUID, default uuid4()"]
+  provider_name varchar(50) [not null, unique, note: "e.g. google"]
+  is_active boolean [not null, default: true]
+
+  Indexes {
+    (provider_name) [unique, name: "ux_auth_providers_provider_name"]
+  }
+}
+
+Table auth_identities {
+  id uuid [pk, note: "UUID, default uuid4()"]
+  user_id uuid [not null]
+  provider_id uuid [not null]
+  provider_user_id varchar(255) [not null, note: "Provider 'sub' or user id"]
+  created_at timestamp [not null, note: "timezone-aware; default utc_now()"]
+
+  Indexes {
+    (user_id) [name: "ix_auth_identities_user_id"]
+    (provider_id) [name: "ix_auth_identities_provider_id"]
+    (provider_id, provider_user_id) [unique, name: "uq_auth_identities_provider_user"]
+  }
+}
+
+Table oauth_token {
+  token uuid [pk, note: "UUID, default uuid4()"]
+  identity_id uuid [not null, unique, note: "Unique => 1 token row per identity"]
+  access_token text [not null]
+  refresh_token text [null]
+  expires_at timestamp [not null, note: "timezone-aware"]
+
+  Indexes {
+    (identity_id) [unique, name: "ux_oauth_token_identity_id"]
+  }
+}
+
+Table login_history {
+  id uuid [pk, note: "UUID, default uuid4()"]
+  user_id uuid [null]
+  status_login smallint [not null, note: "Enum LoginStatus in code; allowed 1..2 (check constraint)"]
+  ip_address varchar(255) [not null]
+  attempt_at timestamp [not null, note: "timezone-aware; default utc_now()"]
+
+  Indexes {
+    (user_id) [name: "ix_login_history_user_id"]
+  }
+}
+
+// AUTH Relationships
+Ref: auth_identities.user_id > users.id
+Ref: auth_identities.provider_id > auth_providers.id
+Ref: oauth_token.identity_id > auth_identities.id
+Ref: login_history.user_id > users.id
+
+///////
+// DOMAIN (Inferred from frontend; configurable)
+///////
+
+Enum asset_source {
+  custom_practice
+  uploaded
+  imported
+  public_library
+}
+
+Enum interview_simulation_mode {
+  mock_general
+  mock_behavioral
+  mock_technical
+  job_focused
+  custom_practice
+}
+
+Enum interview_mode {
+  voice
+  text
+}
+
+Enum interview_status {
+  created
+  scheduled
+  in_progress
+  completed
+  canceled
+}
+
+Enum transcript_speaker {
+  ai
+  candidate
+  recruiter
+  system
+}
+
+Enum feedback_item_kind {
+  highlight
+  improvement
+}
+
+// CV history window in frontend stores: id, name, role, updatedAt, images[]
+Table cv_documents {
+  id uuid [pk]
+  owner_user_id uuid [not null, note: "FK users.id"]
+
+  file_name text [not null]
+  target_role text [null, note: "e.g. Senior Frontend"]
+  uploaded_at timestamp [not null]
+
+  source asset_source [not null, default: 'uploaded']
+  notes text [null]
+
+  // Optional: if you later store the original file in object storage.
+  storage_url text [null]
+  mime_type text [null]
+  size_bytes bigint [null]
+
+  Indexes {
+    (owner_user_id) [name: "ix_cv_documents_owner_user_id"]
+    (uploaded_at) [name: "ix_cv_documents_uploaded_at"]
+  }
+}
+
+// Frontend preview supports multiple images/pages per CV.
+Table cv_pages {
+  id uuid [pk]
+  cv_id uuid [not null]
+  page_index int [not null, note: "0-based or 1-based, pick one consistently"]
+  image_url text [not null, note: "Could be object storage URL"]
+  created_at timestamp [not null]
+
+  Indexes {
+    (cv_id, page_index) [unique, name: "ux_cv_pages_cv_page"]
+    (cv_id) [name: "ix_cv_pages_cv_id"]
+  }
+}
+
+// Optional parsed/extracted info (frontend demo shows candidateName, skills, experienceYears).
+Table cv_extractions {
+  id uuid [pk]
+  cv_id uuid [not null, unique]
+  candidate_name text [null]
+  extracted_role text [null]
+  experience_years int [null]
+  skills jsonb [null, note: "Array of normalized skill names"]
+  created_at timestamp [not null]
+}
+
+Ref: cv_documents.owner_user_id > users.id
+Ref: cv_pages.cv_id > cv_documents.id
+Ref: cv_extractions.cv_id > cv_documents.id
+
+// JD history window in frontend stores: id, title, company, postedAt, summary, responsibilities[], requirements[], attachments[]
+Table jd_documents {
+  id uuid [pk]
+  owner_user_id uuid [not null]
+
+  title text [not null]
+  company text [not null]
+
+  summary text [null]
+  location text [null]
+  employment_type text [null]
+  salary_text text [null]
+
+  created_at timestamp [not null]
+  source asset_source [not null, default: 'custom_practice']
+
+  // Optional matching metrics shown in JobDetailScreen demo
+  cv_fit smallint [null]
+  keyword_match smallint [null]
+  seniority_match smallint [null]
+
+  Indexes {
+    (owner_user_id) [name: "ix_jd_documents_owner_user_id"]
+    (created_at) [name: "ix_jd_documents_created_at"]
+  }
+}
+
+Table jd_attachments {
+  id uuid [pk]
+  jd_id uuid [not null]
+
+  file_name text [not null]
+  mime_type text [null]
+  size_bytes bigint [null]
+  storage_url text [null]
+
+  uploaded_at timestamp [not null]
+
+  Indexes {
+    (jd_id) [name: "ix_jd_attachments_jd_id"]
+  }
+}
+
+Ref: jd_documents.owner_user_id > users.id
+Ref: jd_attachments.jd_id > jd_documents.id
+
+// Practice Sessions / "Phỏng vấn đã tạo" inferred from frontend localStorage aiia-practice-sessions:
+// - id, title, cvId/cvName, jdId/jdTitle, company, createdAt, questions[], feedback{}, score, status
+Table interview_sessions {
+  id uuid [pk]
+  user_id uuid [not null]
+
+  cv_id uuid [null]
+  jd_id uuid [null]
+
+  title text [not null]
+  company text [null]
+
+  simulation_mode interview_simulation_mode [not null, default: 'custom_practice']
+  interview_mode interview_mode [not null, default: 'voice']
+  status interview_status [not null, default: 'created']
+
+  created_at timestamp [not null]
+  scheduled_for timestamp [null]
+  started_at timestamp [null]
+  ended_at timestamp [null]
+
+  score_ai numeric(4,1) [null, note: "e.g. 8.5/10 in frontend demo"]
+
+  // Flexible extension point for later.
+  metadata jsonb [null]
+
+  Indexes {
+    (user_id) [name: "ix_interview_sessions_user_id"]
+    (created_at) [name: "ix_interview_sessions_created_at"]
+    (status) [name: "ix_interview_sessions_status"]
+  }
+}
+
+Table interview_questions {
+  id uuid [pk]
+  session_id uuid [not null]
+  position int [not null]
+  question_text text [not null]
+  topic text [null]
+
+  Indexes {
+    (session_id, position) [unique, name: "ux_interview_questions_session_position"]
+    (session_id) [name: "ix_interview_questions_session_id"]
+  }
+}
+
+// InterviewWizard lets user type answers per question (draftAnswer), can be persisted if you want analytics.
+Table interview_answers {
+  id uuid [pk]
+  session_id uuid [not null]
+  question_id uuid [not null]
+
+  answer_text text [not null]
+  answer_mode interview_mode [not null, default: 'text']
+  created_at timestamp [not null]
+
+  Indexes {
+    (session_id) [name: "ix_interview_answers_session_id"]
+    (question_id) [name: "ix_interview_answers_question_id"]
+  }
+}
+
+// Frontend demo: feedback.summary + highlights[] + improvements[]
+Table interview_feedback {
+  id uuid [pk]
+  session_id uuid [not null, unique]
+  summary text [null]
+  created_at timestamp [not null]
+}
+
+Table interview_feedback_items {
+  id uuid [pk]
+  feedback_id uuid [not null]
+  kind feedback_item_kind [not null]
+  position int [not null]
+  item_text text [not null]
+
+  Indexes {
+    (feedback_id, kind, position) [unique, name: "ux_feedback_items_feedback_kind_pos"]
+    (feedback_id) [name: "ix_feedback_items_feedback_id"]
+  }
+}
+
+// Frontend mock data includes transcripts with speaker/text/time
+Table interview_transcript_lines {
+  id uuid [pk]
+  session_id uuid [not null]
+  speaker transcript_speaker [not null, default: 'ai']
+  speaker_name text [null]
+  line_text text [not null]
+  timecode text [null, note: "e.g. 00:04 in mock data"]
+  offset_seconds int [null]
+  created_at timestamp [not null]
+
+  Indexes {
+    (session_id) [name: "ix_transcript_session_id"]
+  }
+}
+
+// Relationships (Domain)
+Ref: cv_documents.owner_user_id > users.id
+Ref: cv_pages.cv_id > cv_documents.id
+Ref: cv_extractions.cv_id > cv_documents.id
+
+Ref: jd_documents.owner_user_id > users.id
+Ref: jd_attachments.jd_id > jd_documents.id
+
+Ref: interview_sessions.user_id > users.id
+Ref: interview_sessions.cv_id > cv_documents.id
+Ref: interview_sessions.jd_id > jd_documents.id
+
+Ref: interview_questions.session_id > interview_sessions.id
+Ref: interview_answers.session_id > interview_sessions.id
+Ref: interview_answers.question_id > interview_questions.id
+
+Ref: interview_feedback.session_id > interview_sessions.id
+Ref: interview_feedback_items.feedback_id > interview_feedback.id
+
+Ref: interview_transcript_lines.session_id > interview_sessions.id
+

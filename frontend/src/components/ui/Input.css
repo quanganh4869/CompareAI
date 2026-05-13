@@ -1,0 +1,23 @@
+.input-wrapper {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.input-label {
+  font-size: 0.875rem;
+  color: #5e6d82;
+}
+
+.input-field {
+  width: 100%;
+  border: 1px solid #dce5ef;
+  border-radius: 0.625rem;
+  padding: 0.6rem 0.75rem;
+  background: #fff;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #1678ff;
+  box-shadow: 0 0 0 3px rgba(22, 120, 255, 0.14);
+}

@@ -1,0 +1,62 @@
+repos:
+  # Basic file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: debug-statements
+
+  # Remove unused imports and variables
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v2.3.1
+    hooks:
+      - id: autoflake
+        args: ["--in-place", "--remove-unused-variables", "--remove-all-unused-imports"]
+
+  # Ruff linter and formatter (replaces flake8 and isort)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [
+          "--fix",
+          "--select", "E,F,UP,S,B,N,RUF,I,C90",
+          "--ignore", "N802,N803,S101,S105,S608,B904,RUF010,UP035,UP032,RUF100,S311,C901,RUF001,N999",
+          "--line-length", "120"
+        ]
+      - id: ruff-format
+  # Spell checking
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.3.0
+    hooks:
+      - id: codespell
+        args: ["--skip=*.lock,*.json"]
+
+  # Detect secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+        exclude: >
+          (?x)^(
+            .*\.lock$|
+            .*\.json$|
+            .*\.md$|
+            .*alembic.*|
+            .*versions.*
+          )$
+
+  # Security analysis with bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        args: ["--skip", "B101,B601,B603,B404,B311,B105,B608"]
+        exclude: ^tests/

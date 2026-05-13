@@ -1,0 +1,30 @@
+name: Pull Request DEV
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+      - release/**
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: lint ${{ matrix.python-version }}
+    strategy:
+      matrix:
+        python-version: [ '3.12' ]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: pre-commit
+        uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --all-files --verbose

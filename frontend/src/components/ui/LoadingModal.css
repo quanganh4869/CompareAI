@@ -1,0 +1,231 @@
+.ai-loading-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 8, 23, 0.74);
+  backdrop-filter: blur(10px);
+}
+
+.interview-legacy:not(.theme-dark) .ai-loading-modal-overlay {
+  background:
+    radial-gradient(circle at 14% 14%, rgba(22, 120, 255, 0.12) 0%, transparent 42%),
+    radial-gradient(circle at 86% 86%, rgba(21, 135, 107, 0.1) 0%, transparent 42%),
+    rgba(243, 247, 252, 0.88);
+}
+
+.ai-loading-modal-card {
+  width: min(100%, 560px);
+  border-radius: 22px;
+  border: 1px solid rgba(116, 137, 201, 0.35);
+  background: linear-gradient(180deg, rgba(9, 15, 34, 0.98), rgba(8, 12, 28, 0.98));
+  box-shadow: 0 26px 48px rgba(0, 0, 0, 0.45);
+  padding: 28px 24px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.interview-legacy:not(.theme-dark) .ai-loading-modal-card {
+  border-color: rgba(15, 30, 54, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 26px 48px rgba(15, 30, 54, 0.14);
+}
+
+.ai-loading-modal-card::before {
+  content: "";
+  position: absolute;
+  inset: -140px auto auto -120px;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(76, 123, 255, 0.25), transparent 72%);
+  pointer-events: none;
+}
+
+.ai-loading-modal-card::after {
+  content: "";
+  position: absolute;
+  right: -120px;
+  bottom: -140px;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(129, 78, 255, 0.2), transparent 72%);
+  pointer-events: none;
+}
+
+.interview-legacy:not(.theme-dark) .ai-loading-modal-card::before {
+  background: radial-gradient(circle, rgba(22, 120, 255, 0.14), transparent 72%);
+}
+
+.interview-legacy:not(.theme-dark) .ai-loading-modal-card::after {
+  background: radial-gradient(circle, rgba(21, 135, 107, 0.12), transparent 72%);
+}
+
+.ai-loading-graphic {
+  position: relative;
+  z-index: 1;
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+}
+
+.ai-loading-document {
+  width: 146px;
+  height: 176px;
+  border-radius: 20px;
+  border: 1px solid rgba(136, 161, 233, 0.46);
+  background: linear-gradient(180deg, rgba(15, 29, 62, 0.98), rgba(13, 23, 48, 0.98));
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 18px 28px rgba(7, 16, 36, 0.65);
+}
+
+.interview-legacy:not(.theme-dark) .ai-loading-document {
+  border-color: rgba(15, 30, 54, 0.14);
+  background: rgba(248, 251, 255, 0.95);
+  box-shadow: 0 18px 28px rgba(15, 30, 54, 0.12);
+}
+
+.ai-loading-document .doc-icon {
+  width: 50px;
+  height: 50px;
+  color: #b8cbff;
+  position: absolute;
+  left: 50%;
+  top: 24px;
+  transform: translateX(-50%);
+}
+
+.interview-legacy:not(.theme-dark) .ai-loading-document .doc-icon {
+  color: #1678ff;
+}
+
+.ai-loading-document .doc-line {
+  height: 6px;
+  border-radius: 999px;
+  position: absolute;
+  left: 20px;
+  background: rgba(148, 175, 244, 0.5);
+}
+
+.interview-legacy:not(.theme-dark) .ai-loading-document .doc-line {
+  background: rgba(15, 30, 54, 0.18);
+}
+
+.ai-loading-document .doc-line.first {
+  width: 106px;
+  top: 96px;
+}
+
+.ai-loading-document .doc-line.second {
+  width: 92px;
+  top: 112px;
+}
+
+.ai-loading-document .doc-line.third {
+  width: 72px;
+  top: 128px;
+}
+
+.ai-loading-document .scan-line {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(62, 176, 255, 0), rgba(78, 205, 255, 0.9), rgba(130, 92, 255, 0));
+  filter: blur(1px);
+  box-shadow: 0 0 16px rgba(75, 166, 255, 0.6);
+  animation: ai-scan 1.9s ease-in-out infinite;
+}
+
+.ai-loading-status {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  min-height: 28px;
+  color: #e5ecff;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.interview-legacy:not(.theme-dark) .ai-loading-status {
+  color: #243a57;
+}
+
+.typing-caret {
+  width: 2px;
+  height: 19px;
+  background: #8ec2ff;
+  animation: ai-caret 0.72s step-end infinite;
+}
+
+.interview-legacy:not(.theme-dark) .typing-caret {
+  background: rgba(22, 120, 255, 0.65);
+}
+
+.ai-loading-progress {
+  margin-top: 16px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(73, 91, 140, 0.44);
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.interview-legacy:not(.theme-dark) .ai-loading-progress {
+  background: rgba(15, 30, 54, 0.12);
+}
+
+.ai-loading-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3fb0ff, #5577ff, #7e5fff);
+  transition: width 0.18s linear;
+}
+
+@keyframes ai-scan {
+  0% {
+    transform: translateY(-10px);
+    opacity: 0.78;
+  }
+  50% {
+    transform: translateY(78px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(154px);
+    opacity: 0.78;
+  }
+}
+
+@keyframes ai-caret {
+  0%,
+  40% {
+    opacity: 1;
+  }
+  41%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .ai-loading-modal-card {
+    border-radius: 18px;
+    padding: 22px 16px 16px;
+  }
+
+  .ai-loading-status {
+    font-size: 14px;
+  }
+}

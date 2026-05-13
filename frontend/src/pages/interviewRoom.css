@@ -1,0 +1,109 @@
+/* Interview room polish: animated AI avatar glow/float.
+   Keep it lightweight and theme-agnostic; Tailwind handles most colors. */
+
+@keyframes aiiaGlow {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 0.35;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes aiiaFloat {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.aiia-ai-glow {
+  animation: aiiaGlow 2.6s ease-in-out infinite;
+}
+
+.aiia-ai-float {
+  animation: aiiaFloat 4.2s ease-in-out infinite;
+}
+
+@keyframes aiiaBlink {
+  0% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(0.08);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes aiiaTalk {
+  0% {
+    transform: translateY(0px) scaleY(0.92);
+  }
+  50% {
+    transform: translateY(1px) scaleY(1.14);
+  }
+  100% {
+    transform: translateY(0px) scaleY(0.92);
+  }
+}
+
+.aiia-ai-layer {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.aiia-ai-eyes {
+  clip-path: inset(
+    var(--aiia-eye-top, 16%)
+    var(--aiia-face-right, 18%)
+    var(--aiia-eye-bottom, 70%)
+    var(--aiia-face-left, 22%)
+  );
+  transform-origin: center;
+}
+
+.aiia-ai-mouth {
+  clip-path: inset(
+    var(--aiia-mouth-top, 30%)
+    var(--aiia-face-right, 18%)
+    var(--aiia-mouth-bottom, 50%)
+    var(--aiia-face-left, 22%)
+  );
+  transform-origin: center;
+}
+
+.aiia-ai-blink .aiia-ai-eyes {
+  animation: aiiaBlink 140ms ease-in-out 1;
+}
+
+.aiia-ai-speaking .aiia-ai-mouth {
+  animation: aiiaTalk 220ms ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aiia-ai-glow,
+  .aiia-ai-float {
+    animation: none !important;
+  }
+  .aiia-ai-blink .aiia-ai-eyes,
+  .aiia-ai-speaking .aiia-ai-mouth {
+    animation: none !important;
+  }
+}
