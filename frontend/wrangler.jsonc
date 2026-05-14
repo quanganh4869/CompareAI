@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "compareai",
+  "compatibility_date": "2026-05-14",
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": "./dist"
+  }
+}

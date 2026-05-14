@@ -76,6 +76,7 @@ class Settings(BaseSettings):
     CV_PARSE_LEADING_SYMBOL_RUN_PATTERN: str = r"^[^\w]+(?=\w)"
 
     # CV/JD match scoring settings
+    MATCH_USE_EMBEDDING: bool = True
     EMBEDDING_MODEL_NAME: str = "paraphrase-multilingual-MiniLM-L12-v2"
     WEIGHT_SEMANTIC: float = 0.5
     WEIGHT_SKILL: float = 0.3
@@ -98,6 +99,9 @@ class Settings(BaseSettings):
     # JWT
     JWT_ALGORITHM: str = "RS256"
     JWT_RSA_PRIVATE_KEY: str = ""
+    JWT_PRIVATE_KEY_PEM: str = ""
+    JWT_PUBLIC_KEY_PEM: str = ""
+    JWT_CURRENT_KID: str = "key_env"
     RSA_KEY_MANIFEST: dict = {
         "current_kid": "key_20250805",
         "keys": {

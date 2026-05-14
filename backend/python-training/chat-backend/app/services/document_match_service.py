@@ -2,6 +2,7 @@ import re
 import unicodedata
 from typing import Any
 
+from configuration.logger.config import log
 from configuration.settings import configuration
 from core.exception_handler.custom_exception import ExceptionValueError
 from db.models.users import User
@@ -108,6 +109,10 @@ def _clamp(value: float, min_value: float, max_value: float) -> float:
     return max(min_value, min(value, max_value))
 
 
+def _tokenize_words(text: str) -> set[str]:
+    return set(re.findall(r"\b[\w\+#\.]{2,}\b", clean_text(text)))
+
+
 class DocumentMatchService:
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
@@ -205,9 +210,7 @@ class DocumentMatchService:
         cv_clean = clean_text(cv_text)
         jd_clean = clean_text(jd_text)
 
-        embeddings = self.embedding_service.encode([cv_clean, jd_clean])
-        semantic_raw = float(cosine_similarity([embeddings[0]], [embeddings[1]])[0][0])
-        semantic_score = _clamp(semantic_raw, 0.0, 1.0)
+        semantic_score = self._calculate_semantic_score(cv_clean=cv_clean, jd_clean=jd_clean)
 
         jd_skills = extract_skills(jd_text)
         cv_skills = extract_skills(cv_text)
@@ -259,6 +262,33 @@ class DocumentMatchService:
                 }
             ]
         }
+
+    def _calculate_semantic_score(self, cv_clean: str, jd_clean: str) -> float:
+        if not configuration.MATCH_USE_EMBEDDING:
+            return self._lexical_similarity(cv_clean=cv_clean, jd_clean=jd_clean)
+
+        try:
+            embeddings = self.embedding_service.encode([cv_clean, jd_clean])
+            semantic_raw = float(
+                cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
+            )
+            return _clamp(semantic_raw, 0.0, 1.0)
+        except Exception as exc:
+            log.warning("embedding_match_fallback reason=%s", str(exc))
+            return self._lexical_similarity(cv_clean=cv_clean, jd_clean=jd_clean)
+
+    @staticmethod
+    def _lexical_similarity(cv_clean: str, jd_clean: str) -> float:
+        cv_tokens = _tokenize_words(cv_clean)
+        jd_tokens = _tokenize_words(jd_clean)
+        if not cv_tokens or not jd_tokens:
+            return 0.0
+
+        intersection = len(cv_tokens.intersection(jd_tokens))
+        union = len(cv_tokens.union(jd_tokens))
+        if union == 0:
+            return 0.0
+        return _clamp(intersection / union, 0.0, 1.0)
 
     def _generate_executive_summary(self, score, skills, cv_exp, jd_exp):
         summary = f"Dựa trên đánh giá từ góc độ Tuyển dụng Kỹ thuật cao cấp, ứng viên đạt mức độ phù hợp {score}%. "

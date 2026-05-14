@@ -54,7 +54,8 @@ class UserAuthService:
     ) -> OAuthTokenResponse:
         try:
             jwt_token = encode_jwt_token(
-                key_id=configuration.RSA_KEY_MANIFEST.get("current_kid"),
+                key_id=configuration.JWT_CURRENT_KID
+                or configuration.RSA_KEY_MANIFEST.get("current_kid"),
                 jwt_secret_key=configuration.JWT_RSA_PRIVATE_KEY,
                 jwt_algorithm=configuration.JWT_ALGORITHM,
                 access_token_expire_minutes=configuration.ACCESS_TOKEN_EXPIRE_MINUTES,

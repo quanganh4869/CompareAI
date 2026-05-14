@@ -23,14 +23,38 @@ class KeyManager:
             return json.load(f)
 
     def _load_all_keys(self):
+        env_private = configuration.JWT_PRIVATE_KEY_PEM.strip()
+        env_public = configuration.JWT_PUBLIC_KEY_PEM.strip()
+        env_kid = configuration.JWT_CURRENT_KID or "key_env"
+        if env_private:
+            private_key = serialization.load_pem_private_key(
+                env_private.encode("utf-8"),
+                password=None,
+            )
+            self.private_keys[env_kid] = private_key
+            if env_public:
+                public_key = serialization.load_pem_public_key(env_public.encode("utf-8"))
+            else:
+                public_key = private_key.public_key()
+            self.public_keys[env_kid] = public_key
+
+        elif env_public:
+            self.public_keys[env_kid] = serialization.load_pem_public_key(
+                env_public.encode("utf-8")
+            )
+
         for kid, key_info in self.manifest["keys"].items():
             if key_info["status"] == "active":
-                with open(key_info["private_path"], "rb") as f:
-                    self.private_keys[kid] = serialization.load_pem_private_key(
-                        f.read(), password=None
-                    )
+                if kid not in self.private_keys:
+                    with open(key_info["private_path"], "rb") as f:
+                        self.private_keys[kid] = serialization.load_pem_private_key(
+                            f.read(), password=None
+                        )
                 with open(key_info["public_path"], "rb") as f:
-                    self.public_keys[kid] = serialization.load_pem_public_key(f.read())
+                    if kid not in self.public_keys:
+                        self.public_keys[kid] = serialization.load_pem_public_key(
+                            f.read()
+                        )
 
     def get_payload_access_token(self, access_token: str):
         last_error = None
@@ -56,7 +80,7 @@ class KeyManager:
         )
 
     def get_current_signing_key(self):
-        current_kid = self.manifest["current_kid"]
+        current_kid = configuration.JWT_CURRENT_KID or self.manifest["current_kid"]
         if current_kid not in self.private_keys:
             log.error(f"Current KID {current_kid} not found in private keys.")
             raise ExceptionValueError(

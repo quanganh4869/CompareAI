@@ -7,6 +7,7 @@ from configuration.middleware.jwt_auth_middleware import JWTAuthMiddleware
 from configuration.settings import configuration
 from db.db_connection import Database
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette_context.middleware import RawContextMiddleware
@@ -54,6 +55,14 @@ def register_middlewares(app: FastAPI):
         # TODO: add security middlewares
         pass
 
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=configuration.BACKEND_CORS_ORIGINS or ["*"],
+        allow_credentials=True,
+        allow_methods=configuration.BACKEND_CORS_METHODS,
+        allow_headers=["*"],
+    )
+
     # add more middlewares here
     app.add_middleware(
         AuthenticationMiddleware,
@@ -65,6 +74,9 @@ def register_middlewares(app: FastAPI):
 
 
 def load_rsa_private_key() -> bytes:
+    if configuration.JWT_PRIVATE_KEY_PEM.strip():
+        return configuration.JWT_PRIVATE_KEY_PEM.encode("utf-8")
+
     base_dir = Path(__file__).resolve().parent
     current_kid = configuration.RSA_KEY_MANIFEST.get("current_kid")
     rsa_path = base_dir / configuration.RSA_KEY_MANIFEST.get("keys").get(
