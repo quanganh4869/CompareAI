@@ -1,21 +1,36 @@
-# Deploy 0đ (Demo ổn định) cho CompareAI
+# Deploy 0d cho CompareAI (Frontend da xong, tiep tuc Backend + Database)
 
-Tài liệu này mô tả quy trình deploy theo kiến trúc:
-- Frontend: Cloudflare Pages (Free)
-- Backend: Koyeb Web Service (Free)
-- Database: Supabase Postgres (Free)
+Kien truc hien tai:
+- Frontend: Cloudflare Workers static assets
+- Backend: Render Web Service (Docker)
+- Database: Supabase Postgres
 - Storage: Cloudflare R2
-- Auth: Google OAuth
 
-## 1) Chuẩn bị bảo mật
+## 1) Supabase database
 
-1. Rotate toàn bộ secret cũ đã từng có trong `.env`.
-2. Không commit secret vào git.
-3. Chỉ dùng `.env.example` làm template.
+1. Tao 1 project Supabase moi.
+2. Lay thong tin ket noi Postgres:
+- host
+- port (5432)
+- database name
+- user
+- password
+3. Dung SSL mode:
+- `POSTGRES_SSL_MODE=require`
+- `READ_ONLY_POSTGRES_SSL_MODE=require`
 
-## 2) Cấu hình backend env (production)
+## 2) Render backend (Docker)
 
-Thiết lập các biến sau trên Koyeb:
+Render service canh bao cold start tren free tier la binh thuong.
+
+### Thong so service
+- Service type: Web Service
+- Runtime: Docker
+- Root directory: `backend/python-training/chat-backend`
+- Port: `8000`
+- Health check: `/health`
+
+### Environment variables toi thieu
 
 ```env
 ENVIRONMENT=production
@@ -29,6 +44,7 @@ POSTGRES_USER=<supabase-user>
 POSTGRES_PASSWORD=<supabase-password>
 POSTGRES_DB=<supabase-db>
 POSTGRES_PORT=5432
+POSTGRES_SSL_MODE=require
 DB_ECHO=false
 DB_INIT=false
 
@@ -37,6 +53,7 @@ READ_ONLY_POSTGRES_USER=<supabase-user>
 READ_ONLY_POSTGRES_PASSWORD=<supabase-password>
 READ_ONLY_POSTGRES_DB=<supabase-db>
 READ_ONLY_POSTGRES_PORT=5432
+READ_ONLY_POSTGRES_SSL_MODE=require
 
 SECRET_ROTATION_KEY_MAPPING={"v1":"0123456789abcdef0123456789abcdef"}
 SECRET_CURRENT_VERSION=v1
@@ -58,60 +75,35 @@ DOCUMENT_JD_PREFIX=jd
 CV_OCR_ENABLED=false
 MATCH_USE_EMBEDDING=false
 
-JWT_PRIVATE_KEY_PEM=<pem-private-key-multiline>
-JWT_PUBLIC_KEY_PEM=<pem-public-key-multiline>
+JWT_PRIVATE_KEY_PEM=<pem-private-key>
+JWT_PUBLIC_KEY_PEM=<pem-public-key>
 JWT_CURRENT_KID=key_env
 ```
 
-Lưu ý:
-- `JWT_PUBLIC_KEY_PEM` có thể bỏ trống nếu đã có `JWT_PRIVATE_KEY_PEM` (hệ thống tự derive public key).
-- `BACKEND_CORS_ORIGINS` phải chứa domain frontend thực tế.
+Ghi chu:
+- `JWT_PUBLIC_KEY_PEM` co the de trong neu da co private key.
+- Entry point da tu chay migration: `alembic upgrade head`.
 
-## 3) Deploy backend lên Koyeb
+## 3) Frontend cap nhat lai API URL
 
-1. Tạo Web Service từ Git repository.
-2. Root directory: `backend/python-training/chat-backend`.
-3. Runtime dùng Dockerfile hiện tại.
-4. HTTP Port: `8000`.
-5. Health check path: `/health`.
+Sau khi Render cap backend domain:
+1. Vao Cloudflare build settings.
+2. Cap nhat env:
+- `VITE_API_BASE_URL=https://<backend-domain>`
+3. Redeploy frontend.
 
-Container startup đã tự:
-- Chờ Postgres sẵn sàng.
-- Chạy migration: `alembic upgrade head`.
-- Khởi động API bằng `uvicorn`.
+## 4) Google OAuth
 
-## 4) Deploy frontend lên Cloudflare Pages
-
-1. Framework preset: Vite.
-2. Build command: `npm run build`.
-3. Build output: `dist`.
-4. Root directory: `frontend`.
-5. Thêm env:
-
-```env
-VITE_API_BASE_URL=https://<backend-domain>
-```
-
-## 5) Cấu hình Google OAuth
-
-Trong Google Cloud Console:
+Cap nhat tren Google Cloud Console:
+- Authorized JavaScript origin:
+  - `https://<frontend-domain>`
 - Authorized redirect URI:
   - `https://<backend-domain>/v1_0/auth/login/google/callback`
-- Authorized JavaScript origins:
-  - `https://<frontend-domain>`
 
-URI phải khớp tuyệt đối protocol + domain + path.
+## 5) Smoke test
 
-## 6) Smoke test sau deploy
-
-1. `GET https://<backend-domain>/health` trả `status=OK`.
-2. Truy cập frontend và đăng nhập Google thành công.
-3. Gọi `/v1_0/user/me` thành công sau login.
-4. Upload CV/JD và list document thành công.
-5. Gọi `/v1_0/document/match-score` chạy không tải model nặng (demo mode).
-
-## 7) Giới hạn demo mode
-
-- `CV_OCR_ENABLED=false`: không OCR ảnh scan.
-- `MATCH_USE_EMBEDDING=false`: dùng lexical fallback, giảm tải CPU/RAM.
-- Phù hợp demo ổn định free tier, không tối ưu độ chính xác AI.
+1. `GET https://<backend-domain>/health` -> `OK`
+2. Login Google thanh cong.
+3. `GET /v1_0/user/me` sau login thanh cong.
+4. Upload CV/JD, list documents thanh cong.
+5. `POST /v1_0/document/match-score` thanh cong o demo mode.

@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: compareai-backend
+    runtime: docker
+    rootDir: backend/python-training/chat-backend
+    healthCheckPath: /health
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: PROJECT_NAME
+        value: Chat Backend Service
+      - key: BACKEND_CORS_ORIGINS
+        value: '["https://<frontend-domain>"]'
+      - key: BACKEND_CORS_METHODS
+        value: '["GET","POST","PUT","OPTIONS","PATCH","DELETE"]'
+      - key: POSTGRES_SSL_MODE
+        value: require
+      - key: READ_ONLY_POSTGRES_SSL_MODE
+        value: require
+      - key: DB_ECHO
+        value: "false"
+      - key: DB_INIT
+        value: "false"
+      - key: STORAGE_STRATEGY
+        value: r2
+      - key: CV_OCR_ENABLED
+        value: "false"
+      - key: MATCH_USE_EMBEDDING
+        value: "false"
+      - key: JWT_CURRENT_KID
+        value: key_env

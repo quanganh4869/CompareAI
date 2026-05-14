@@ -31,6 +31,14 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
     POSTGRES_PORT: int
+    POSTGRES_SSL_MODE: Literal[
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full",
+    ] = "prefer"
     DB_ECHO: bool = False
     DB_INIT: bool = False
 
@@ -40,6 +48,14 @@ class Settings(BaseSettings):
     READ_ONLY_POSTGRES_PASSWORD: str
     READ_ONLY_POSTGRES_DB: str
     READ_ONLY_POSTGRES_PORT: int
+    READ_ONLY_POSTGRES_SSL_MODE: Literal[
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full",
+    ] = "prefer"
 
     # AES-GCM
     SECRET_ROTATION_KEY_MAPPING: dict = {"v1": "0123456789abcdef0123456789abcdef"}

@@ -18,13 +18,15 @@ class Database:
 
     @classmethod
     def get_url(cls):
+        settings = Settings()
         return URL.create(
             drivername="postgresql+asyncpg",
-            username=Settings().POSTGRES_USER,
-            password=Settings().POSTGRES_PASSWORD,
-            host=Settings().POSTGRES_SERVER,
-            port=Settings().POSTGRES_PORT,
-            database=Settings().POSTGRES_DB,
+            username=settings.POSTGRES_USER,
+            password=settings.POSTGRES_PASSWORD,
+            host=settings.POSTGRES_SERVER,
+            port=settings.POSTGRES_PORT,
+            database=settings.POSTGRES_DB,
+            query={"sslmode": settings.POSTGRES_SSL_MODE},
         )
 
     @classmethod
@@ -36,6 +38,7 @@ class Database:
             f"{settings.POSTGRES_SERVER}:"
             f"{settings.POSTGRES_PORT}/"
             f"{settings.POSTGRES_DB}"
+            f"?sslmode={settings.POSTGRES_SSL_MODE}"
         )
 
     @classmethod
@@ -81,13 +84,15 @@ class DatabaseReadOnly:
 
     @classmethod
     def get_url(cls):
+        settings = Settings()
         return URL.create(
             drivername="postgresql+asyncpg",
-            username=Settings().READ_ONLY_POSTGRES_USER,
-            password=Settings().READ_ONLY_POSTGRES_PASSWORD,
-            host=Settings().READ_ONLY_POSTGRES_SERVER,
-            port=Settings().READ_ONLY_POSTGRES_PORT,
-            database=Settings().READ_ONLY_POSTGRES_DB,
+            username=settings.READ_ONLY_POSTGRES_USER,
+            password=settings.READ_ONLY_POSTGRES_PASSWORD,
+            host=settings.READ_ONLY_POSTGRES_SERVER,
+            port=settings.READ_ONLY_POSTGRES_PORT,
+            database=settings.READ_ONLY_POSTGRES_DB,
+            query={"sslmode": settings.READ_ONLY_POSTGRES_SSL_MODE},
         )
 
     @classmethod
