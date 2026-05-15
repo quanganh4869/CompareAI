@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import ssl
 from typing import AsyncGenerator, Optional
 
 from configuration.logger.config import log
@@ -12,9 +13,24 @@ from sqlalchemy.ext.asyncio import (  # isort: skip
 )
 
 
-def _asyncpg_ssl_enabled(ssl_mode: str) -> bool:
+def _asyncpg_ssl_config(ssl_mode: str):
     normalized = str(ssl_mode or "prefer").strip().lower()
-    return normalized != "disable"
+    if normalized == "disable":
+        return False
+
+    # Match libpq-like behavior for common cloud Postgres setups.
+    if normalized in {"allow", "prefer", "require"}:
+        return "require"
+
+    ssl_context = ssl.create_default_context()
+    if normalized == "verify-ca":
+        ssl_context.check_hostname = False
+        return ssl_context
+    if normalized == "verify-full":
+        ssl_context.check_hostname = True
+        return ssl_context
+
+    return "require"
 
 
 class Database:
@@ -54,7 +70,7 @@ class Database:
                 echo=settings.DB_ECHO,
                 future=True,
                 pool_pre_ping=True,
-                connect_args={"ssl": _asyncpg_ssl_enabled(settings.POSTGRES_SSL_MODE)},
+                connect_args={"ssl": _asyncpg_ssl_config(settings.POSTGRES_SSL_MODE)},
             )
         return cls._engine
 
@@ -113,7 +129,7 @@ class DatabaseReadOnly:
                 future=True,
                 pool_pre_ping=True,
                 connect_args={
-                    "ssl": _asyncpg_ssl_enabled(settings.READ_ONLY_POSTGRES_SSL_MODE)
+                    "ssl": _asyncpg_ssl_config(settings.READ_ONLY_POSTGRES_SSL_MODE)
                 },
             )
         return cls._engine
