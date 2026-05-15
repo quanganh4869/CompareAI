@@ -320,7 +320,29 @@ class DocumentService:
 
         query = query.order_by(Document.created_at.desc())
         result = await self.db_session.execute(query)
-        return list(result.scalars().all())
+        documents = list(result.scalars().all())
+
+        # With local storage (ephemeral disks), files can disappear after restarts/redeploys.
+        # Hide orphan records from listing to avoid guaranteed 404 on preview.
+        if not self.storage_service.supports_presigned_download:
+            visible_documents: list[Document] = []
+            orphan_ids: list[int] = []
+            for document in documents:
+                file_path = Path(document.storage_key or "")
+                if file_path.exists() and file_path.is_file():
+                    visible_documents.append(document)
+                else:
+                    orphan_ids.append(document.id)
+
+            if orphan_ids:
+                log.warning(
+                    "local_storage_orphan_documents_hidden user_id=%s orphan_ids=%s",
+                    user.id,
+                    orphan_ids,
+                )
+            return visible_documents
+
+        return documents
 
     async def create_access_url(
         self,
@@ -359,7 +381,7 @@ class DocumentService:
             file_path = Path(document.storage_key)
             if not file_path.exists() or not file_path.is_file():
                 raise ExceptionValueError(
-                    message="Uploaded file is not found in storage.",
+                    message="Uploaded file is not found in storage. Local storage on this deployment is ephemeral; please re-upload your CV or switch STORAGE_STRATEGY to r2.",
                     status_code=404,
                 )
             token = self._create_local_access_token(
