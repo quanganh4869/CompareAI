@@ -50,6 +50,7 @@ class KeyManager:
                 else:
                     public_key = private_key.public_key()
                 self.public_keys[env_kid] = public_key
+                return
             except Exception as exc:
                 log.warning("Invalid JWT PEM from env, fallback to manifest keys: %s", exc)
 
@@ -58,6 +59,7 @@ class KeyManager:
                 self.public_keys[env_kid] = serialization.load_pem_public_key(
                     env_public.encode("utf-8")
                 )
+                return
             except Exception as exc:
                 log.warning(
                     "Invalid JWT public key from env, fallback to manifest keys: %s",

@@ -87,7 +87,14 @@ def register_middlewares(app: FastAPI):
 def load_rsa_private_key() -> bytes:
     if configuration.JWT_PRIVATE_KEY_PEM.strip():
         try:
-            return _normalize_pem(configuration.JWT_PRIVATE_KEY_PEM).encode("utf-8")
+            private_key_bytes = _normalize_pem(configuration.JWT_PRIVATE_KEY_PEM).encode(
+                "utf-8"
+            )
+            # Fail fast on malformed env key to avoid opaque runtime auth errors.
+            from cryptography.hazmat.primitives import serialization
+
+            serialization.load_pem_private_key(private_key_bytes, password=None)
+            return private_key_bytes
         except Exception as exc:
             log.warning("Invalid JWT private key from env, fallback to file key: %s", exc)
 
