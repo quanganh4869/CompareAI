@@ -17,7 +17,7 @@ const BREADCRUMB_MAP = {
   jobMatch: "So sánh CV/JD",
 };
 
-const Header = () => {
+const Header = ({ onMenuClick }) => {
   const { user, logout } = useUser();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [theme, setTheme] = useState(getStoredTheme);
@@ -60,7 +60,7 @@ const Header = () => {
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-x-4 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 px-4 shadow-sm backdrop-blur-md sm:gap-x-6 sm:px-6 lg:px-8 transition-colors duration-300">
       {/* Mobile menu button (optional) */}
-      <button type="button" className="-m-2.5 p-2.5 text-slate-700 dark:text-slate-300 lg:hidden">
+      <button type="button" onClick={onMenuClick} className="-m-2.5 p-2.5 text-slate-700 dark:text-slate-300 lg:hidden">
         <span className="sr-only">Mở menu</span>
         <Menu className="h-5 w-5" aria-hidden="true" />
       </button>
