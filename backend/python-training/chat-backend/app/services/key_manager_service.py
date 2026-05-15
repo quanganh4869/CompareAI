@@ -36,21 +36,32 @@ class KeyManager:
         env_public = _normalize_pem(configuration.JWT_PUBLIC_KEY_PEM)
         env_kid = configuration.JWT_CURRENT_KID or "key_env"
         if env_private:
-            private_key = serialization.load_pem_private_key(
-                env_private.encode("utf-8"),
-                password=None,
-            )
-            self.private_keys[env_kid] = private_key
-            if env_public:
-                public_key = serialization.load_pem_public_key(env_public.encode("utf-8"))
-            else:
-                public_key = private_key.public_key()
-            self.public_keys[env_kid] = public_key
+            try:
+                private_key = serialization.load_pem_private_key(
+                    env_private.encode("utf-8"),
+                    password=None,
+                )
+                self.private_keys[env_kid] = private_key
+                if env_public:
+                    public_key = serialization.load_pem_public_key(
+                        env_public.encode("utf-8")
+                    )
+                else:
+                    public_key = private_key.public_key()
+                self.public_keys[env_kid] = public_key
+            except Exception as exc:
+                log.warning("Invalid JWT PEM from env, fallback to manifest keys: %s", exc)
 
         elif env_public:
-            self.public_keys[env_kid] = serialization.load_pem_public_key(
-                env_public.encode("utf-8")
-            )
+            try:
+                self.public_keys[env_kid] = serialization.load_pem_public_key(
+                    env_public.encode("utf-8")
+                )
+            except Exception as exc:
+                log.warning(
+                    "Invalid JWT public key from env, fallback to manifest keys: %s",
+                    exc,
+                )
 
         for kid, key_info in self.manifest["keys"].items():
             if key_info["status"] == "active":

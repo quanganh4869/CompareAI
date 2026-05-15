@@ -86,7 +86,10 @@ def register_middlewares(app: FastAPI):
 
 def load_rsa_private_key() -> bytes:
     if configuration.JWT_PRIVATE_KEY_PEM.strip():
-        return _normalize_pem(configuration.JWT_PRIVATE_KEY_PEM).encode("utf-8")
+        try:
+            return _normalize_pem(configuration.JWT_PRIVATE_KEY_PEM).encode("utf-8")
+        except Exception as exc:
+            log.warning("Invalid JWT private key from env, fallback to file key: %s", exc)
 
     base_dir = Path(__file__).resolve().parent
     current_kid = configuration.RSA_KEY_MANIFEST.get("current_kid")
