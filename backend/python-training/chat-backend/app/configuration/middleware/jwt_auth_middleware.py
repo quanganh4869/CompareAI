@@ -10,7 +10,7 @@ from core.dependencies.oauth import get_current_user_claims
 from core.messages import CustomMessageCode
 from db.db_connection import Database
 from db.models import OAuthToken, User
-from fastapi import Request, Response
+from fastapi import Response
 from sqlalchemy import select
 from starlette.authentication import (
     AuthCredentials,
@@ -60,13 +60,14 @@ class JWTAuthMiddleware(AuthenticationBackend):
             media_type=exc.media_type,
         )
 
-    async def authenticate(self, request: Request):
+    async def authenticate(self, request: HTTPConnection):
         """
         Authenticate the user based on JWT token in the request header.
         If authentication fails, raise an AuthenticationError.
         """
         try:
-            if request.method == "OPTIONS":
+            method = str(request.scope.get("method", "")).upper()
+            if method == "OPTIONS":
                 return
 
             if request.url.path in configuration.TOKEN_EXCLUDE_URLS:
