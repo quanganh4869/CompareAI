@@ -204,6 +204,7 @@ async def access_local_document_file(
             path=payload["file_path"],
             media_type=payload["mime_type"],
             filename=payload["file_name"],
+            content_disposition_type="inline",
         )
     except ExceptionValueError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
