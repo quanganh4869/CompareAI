@@ -12,5 +12,8 @@ echo "Running database migrations..."
 cd /app
 alembic -c alembic.ini upgrade head
 
+echo "Validating app import..."
+python -c "import main; print('App import OK')"
+
 echo "Starting API server..."
-exec uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}"
+exec uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}" --log-level debug
