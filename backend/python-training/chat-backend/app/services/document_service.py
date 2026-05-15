@@ -380,6 +380,26 @@ class DocumentService:
         else:
             file_path = Path(document.storage_key)
             if not file_path.exists() or not file_path.is_file():
+                # Self-heal: local storage is ephemeral; stale DB rows are common after redeploy.
+                # Soft-delete orphan row so the same broken document won't keep appearing.
+                try:
+                    document.deleted_at = datetime.now(timezone.utc)
+                    self.db_session.add(document)
+                    await self.db_session.commit()
+                    log.warning(
+                        "local_storage_orphan_soft_deleted user_id=%s document_id=%s storage_key=%s",
+                        getattr(user, "id", None),
+                        document.id,
+                        document.storage_key,
+                    )
+                except Exception as cleanup_exc:
+                    await self.db_session.rollback()
+                    log.error(
+                        "local_storage_orphan_soft_delete_failed user_id=%s document_id=%s error=%s",
+                        getattr(user, "id", None),
+                        document.id,
+                        str(cleanup_exc),
+                    )
                 raise ExceptionValueError(
                     message="Uploaded file is not found in storage. Local storage on this deployment is ephemeral; please re-upload your CV or switch STORAGE_STRATEGY to r2.",
                     status_code=404,
