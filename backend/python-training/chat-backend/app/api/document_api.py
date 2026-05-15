@@ -189,10 +189,10 @@ async def get_document_access_url(
 @api_version(1, 0)
 @measure_time
 async def access_local_document_file(
+    service: DocumentServiceDep,
     document_id: int = Query(gt=0),
     token: str = Query(min_length=16),
     image_only: bool = Query(default=False),
-    service: DocumentServiceDep = Depends(get_document_service),
 ):
     try:
         payload = await service.read_local_document_for_access(
