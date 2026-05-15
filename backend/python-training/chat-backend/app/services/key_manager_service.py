@@ -1,5 +1,6 @@
 import base64
 import json
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -65,15 +66,35 @@ class KeyManager:
 
         for kid, key_info in self.manifest["keys"].items():
             if key_info["status"] == "active":
-                if kid not in self.private_keys:
-                    with open(key_info["private_path"], "rb") as f:
-                        self.private_keys[kid] = serialization.load_pem_private_key(
-                            f.read(), password=None
+                private_path = Path(key_info["private_path"])
+                public_path = Path(key_info["public_path"])
+
+                if kid not in self.private_keys and private_path.exists():
+                    try:
+                        with open(private_path, "rb") as f:
+                            self.private_keys[kid] = serialization.load_pem_private_key(
+                                f.read(), password=None
+                            )
+                    except Exception as exc:
+                        log.warning(
+                            "Failed to load manifest private key kid=%s path=%s error=%s",
+                            kid,
+                            private_path,
+                            exc,
                         )
-                with open(key_info["public_path"], "rb") as f:
-                    if kid not in self.public_keys:
-                        self.public_keys[kid] = serialization.load_pem_public_key(
-                            f.read()
+
+                if kid not in self.public_keys and public_path.exists():
+                    try:
+                        with open(public_path, "rb") as f:
+                            self.public_keys[kid] = serialization.load_pem_public_key(
+                                f.read()
+                            )
+                    except Exception as exc:
+                        log.warning(
+                            "Failed to load manifest public key kid=%s path=%s error=%s",
+                            kid,
+                            public_path,
+                            exc,
                         )
 
     def get_payload_access_token(self, access_token: str):
@@ -101,6 +122,18 @@ class KeyManager:
 
     def get_current_signing_key(self):
         current_kid = configuration.JWT_CURRENT_KID or self.manifest["current_kid"]
+        if current_kid not in self.private_keys:
+            # If env private key exists but key map is empty, try loading it directly once.
+            env_private = _normalize_pem(configuration.JWT_PRIVATE_KEY_PEM)
+            if env_private:
+                try:
+                    self.private_keys[current_kid] = serialization.load_pem_private_key(
+                        env_private.encode("utf-8"),
+                        password=None,
+                    )
+                except Exception as exc:
+                    log.warning("Failed to load env private key for signing: %s", exc)
+
         if current_kid not in self.private_keys:
             log.error(f"Current KID {current_kid} not found in private keys.")
             raise ExceptionValueError(
