@@ -11,7 +11,18 @@ from core.exception_handler.custom_exception import ExceptionValueError
 from db.db_connection import Database
 from db.models.document import Document
 from db.models.users import User
-from fastapi import APIRouter, Depends, File, Form, Query, Security, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    Security,
+    UploadFile,
+)
+from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer
 from schemas.requests.document_schema import (
     DocumentAccessUrlRequest,
@@ -155,6 +166,7 @@ async def upload_document_via_backend(
 async def get_document_access_url(
     document_id: int,
     payload: DocumentAccessUrlRequest,
+    request: Request,
     user: UserOrHRDep,
     service: DocumentServiceDep,
 ):
@@ -168,8 +180,33 @@ async def get_document_access_url(
             document_id,
             payload.expires_in,
             image_only=payload.image_only,
+            public_base_url=str(request.base_url).rstrip("/"),
         ),
     )
+
+
+@router.get("/local-access")
+@api_version(1, 0)
+@measure_time
+async def access_local_document_file(
+    document_id: int = Query(gt=0),
+    token: str = Query(min_length=16),
+    image_only: bool = Query(default=False),
+    service: DocumentServiceDep = Depends(get_document_service),
+):
+    try:
+        payload = await service.read_local_document_for_access(
+            document_id=document_id,
+            token=token,
+            image_only=image_only,
+        )
+        return FileResponse(
+            path=payload["file_path"],
+            media_type=payload["mime_type"],
+            filename=payload["file_name"],
+        )
+    except ExceptionValueError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
 
 @router.get("")
@@ -281,12 +318,14 @@ async def _download_url_data(
     document_id: int,
     expires_in: int | None,
     image_only: bool,
+    public_base_url: str,
 ):
     response = await service.create_access_url(
         user=user,
         document_id=document_id,
         expires_in=expires_in,
         image_only=image_only,
+        public_base_url=public_base_url,
     )
     return DocumentDownloadUrlResponse(**response).model_dump()
 

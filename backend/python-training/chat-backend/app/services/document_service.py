@@ -1,4 +1,9 @@
+import base64
+import hashlib
+import hmac
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from configuration.logger.config import log
@@ -56,6 +61,92 @@ class DocumentService:
             raise ExceptionValueError(
                 message="Presigned download is only available when STORAGE_STRATEGY is r2.",
             )
+
+    @staticmethod
+    def _now_ts() -> int:
+        return int(datetime.now(timezone.utc).timestamp())
+
+    @staticmethod
+    def _b64url_encode(raw: bytes) -> str:
+        return base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
+
+    @staticmethod
+    def _b64url_decode(raw: str) -> bytes:
+        padded = raw + ("=" * (-len(raw) % 4))
+        return base64.urlsafe_b64decode(padded.encode("utf-8"))
+
+    @staticmethod
+    def _local_access_secret() -> bytes:
+        current_version = configuration.SECRET_CURRENT_VERSION
+        secret = configuration.SECRET_ROTATION_KEY_MAPPING.get(current_version, "")
+        return str(secret).encode("utf-8")
+
+    def _create_local_access_token(
+        self,
+        *,
+        document_id: int,
+        storage_key: str,
+        expires_in: int,
+    ) -> str:
+        payload = {
+            "document_id": document_id,
+            "storage_key": storage_key,
+            "exp": self._now_ts() + int(expires_in),
+        }
+        payload_raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode(
+            "utf-8"
+        )
+        payload_b64 = self._b64url_encode(payload_raw)
+        signature = hmac.new(
+            self._local_access_secret(),
+            payload_b64.encode("utf-8"),
+            hashlib.sha256,
+        ).digest()
+        return f"{payload_b64}.{self._b64url_encode(signature)}"
+
+    def _verify_local_access_token(
+        self,
+        *,
+        token: str,
+        expected_document_id: int,
+        expected_storage_key: str,
+    ) -> None:
+        try:
+            payload_b64, signature_b64 = token.split(".", maxsplit=1)
+            expected_signature = hmac.new(
+                self._local_access_secret(),
+                payload_b64.encode("utf-8"),
+                hashlib.sha256,
+            ).digest()
+            provided_signature = self._b64url_decode(signature_b64)
+            if not hmac.compare_digest(expected_signature, provided_signature):
+                raise ExceptionValueError(
+                    message="Invalid document access token.", status_code=403
+                )
+
+            payload = json.loads(self._b64url_decode(payload_b64).decode("utf-8"))
+            token_document_id = int(payload.get("document_id", 0))
+            token_storage_key = str(payload.get("storage_key", ""))
+            token_exp = int(payload.get("exp", 0))
+
+            if token_document_id != int(expected_document_id):
+                raise ExceptionValueError(
+                    message="Invalid document access token.", status_code=403
+                )
+            if token_storage_key != str(expected_storage_key):
+                raise ExceptionValueError(
+                    message="Invalid document access token.", status_code=403
+                )
+            if token_exp < self._now_ts():
+                raise ExceptionValueError(
+                    message="Document access token has expired.", status_code=401
+                )
+        except ExceptionValueError:
+            raise
+        except Exception as exc:
+            raise ExceptionValueError(
+                message="Invalid document access token.", status_code=403
+            ) from exc
 
     async def _ensure_object_exists(self, object_key: str) -> None:
         try:
@@ -237,16 +328,13 @@ class DocumentService:
         document_id: int,
         expires_in: int | None = None,
         image_only: bool = False,
+        public_base_url: str | None = None,
     ) -> dict[str, Any]:
-        self._ensure_presigned_download_enabled()
         document = await self._get_accessible_document(
             user=user, document_id=document_id
         )
-        await self._ensure_object_exists(document.storage_key)
-
         if image_only and (
-            not document.mime_type
-            or not document.mime_type.lower().startswith("image/")
+            not document.mime_type or not document.mime_type.lower().startswith("image/")
         ):
             raise ExceptionValueError(
                 message="This document is not an image.",
@@ -254,14 +342,84 @@ class DocumentService:
             )
 
         ttl = expires_in or configuration.STORAGE_PRESIGNED_GET_EXPIRES_SECONDS
-        response = await self.storage_service.create_presigned_download(
-            object_key=document.storage_key,
-            expires_seconds=ttl,
-        )
+        if self.storage_service.supports_presigned_download:
+            await self._ensure_object_exists(document.storage_key)
+            response = await self.storage_service.create_presigned_download(
+                object_key=document.storage_key,
+                expires_seconds=ttl,
+            )
+        else:
+            file_path = Path(document.storage_key)
+            if not file_path.exists() or not file_path.is_file():
+                raise ExceptionValueError(
+                    message="Uploaded file is not found in storage.",
+                    status_code=404,
+                )
+            token = self._create_local_access_token(
+                document_id=document.id,
+                storage_key=document.storage_key,
+                expires_in=ttl,
+            )
+            base = (public_base_url or "").rstrip("/")
+            if not base:
+                raise ExceptionValueError(
+                    message="Cannot build local download URL.",
+                    status_code=500,
+                )
+            response = {
+                "download_url": f"{base}/v1_0/document/local-access?document_id={document.id}&token={token}",
+                "expires_in": ttl,
+            }
+
         return {
             "document_id": document.id,
             "download_url": response["download_url"],
             "expires_in": response["expires_in"],
+        }
+
+    async def read_local_document_for_access(
+        self,
+        *,
+        document_id: int,
+        token: str,
+        image_only: bool = False,
+    ) -> dict[str, Any]:
+        document = (
+            await self.db_session.execute(
+                select(Document).where(
+                    Document.id == document_id,
+                    Document.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if not document:
+            raise ExceptionValueError(message="Document not found.", status_code=404)
+
+        self._verify_local_access_token(
+            token=token,
+            expected_document_id=document.id,
+            expected_storage_key=document.storage_key,
+        )
+
+        if image_only and (
+            not document.mime_type or not document.mime_type.lower().startswith("image/")
+        ):
+            raise ExceptionValueError(
+                message="This document is not an image.",
+                status_code=400,
+            )
+
+        file_path = Path(document.storage_key)
+        if not file_path.exists() or not file_path.is_file():
+            raise ExceptionValueError(
+                message="Uploaded file is not found in storage.",
+                status_code=404,
+            )
+
+        return {
+            "file_path": str(file_path),
+            "file_name": document.file_name,
+            "mime_type": document.mime_type or "application/octet-stream",
         }
 
     async def delete_document(self, user: User, document_id: int) -> dict[str, Any]:

@@ -141,6 +141,7 @@ class Settings(BaseSettings):
         "/v1_0/auth/google/login",
         "/v1_0/auth/login/google/callback",
         "/v1_0/auth/login/google",
+        "/v1_0/document/local-access",
     ]
 
 
