@@ -12,6 +12,11 @@ from sqlalchemy.ext.asyncio import (  # isort: skip
 )
 
 
+def _asyncpg_ssl_enabled(ssl_mode: str) -> bool:
+    normalized = str(ssl_mode or "prefer").strip().lower()
+    return normalized != "disable"
+
+
 class Database:
     _engine = None
     _sessionmaker: Optional[async_sessionmaker] = None
@@ -26,7 +31,6 @@ class Database:
             host=settings.POSTGRES_SERVER,
             port=settings.POSTGRES_PORT,
             database=settings.POSTGRES_DB,
-            query={"sslmode": settings.POSTGRES_SSL_MODE},
         )
 
     @classmethod
@@ -44,8 +48,13 @@ class Database:
     @classmethod
     def get_async_engine(cls):
         if cls._engine is None:
+            settings = Settings()
             cls._engine = create_async_engine(
-                cls.get_url(), echo=Settings().DB_ECHO, future=True, pool_pre_ping=True
+                cls.get_url(),
+                echo=settings.DB_ECHO,
+                future=True,
+                pool_pre_ping=True,
+                connect_args={"ssl": _asyncpg_ssl_enabled(settings.POSTGRES_SSL_MODE)},
             )
         return cls._engine
 
@@ -92,14 +101,20 @@ class DatabaseReadOnly:
             host=settings.READ_ONLY_POSTGRES_SERVER,
             port=settings.READ_ONLY_POSTGRES_PORT,
             database=settings.READ_ONLY_POSTGRES_DB,
-            query={"sslmode": settings.READ_ONLY_POSTGRES_SSL_MODE},
         )
 
     @classmethod
     def get_async_engine(cls):
         if cls._engine is None:
+            settings = Settings()
             cls._engine = create_async_engine(
-                cls.get_url(), echo=Settings().DB_ECHO, future=True, pool_pre_ping=True
+                cls.get_url(),
+                echo=settings.DB_ECHO,
+                future=True,
+                pool_pre_ping=True,
+                connect_args={
+                    "ssl": _asyncpg_ssl_enabled(settings.READ_ONLY_POSTGRES_SSL_MODE)
+                },
             )
         return cls._engine
 
