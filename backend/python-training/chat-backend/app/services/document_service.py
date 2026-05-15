@@ -330,6 +330,13 @@ class DocumentService:
         image_only: bool = False,
         public_base_url: str | None = None,
     ) -> dict[str, Any]:
+        log.info(
+            "create_access_url strategy=%s supports_presigned=%s document_id=%s user_id=%s",
+            configuration.STORAGE_STRATEGY,
+            self.storage_service.supports_presigned_download,
+            document_id,
+            getattr(user, "id", None),
+        )
         document = await self._get_accessible_document(
             user=user, document_id=document_id
         )

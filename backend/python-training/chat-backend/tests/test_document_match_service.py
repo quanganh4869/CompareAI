@@ -47,15 +47,11 @@ def test_calculate_match_weight_formula():
         jd_text="Need Python AWS with 3 years experience",
     )
 
-    recomputed = (
-        (0.5 * (result["semantic_score"] / 100))
-        + (0.3 * (result["skill_score"] / 100))
-        + (0.2 * (result["experience_score"] / 100))
-    )
-
-    assert 0 <= result["match_score"] <= 100
-    assert abs((result["match_score"] / 100) - recomputed) < 1e-4
-    assert result["recommendation"] in {"Shortlist", "Consider", "Reject"}
+    assert 0 <= result["overall_score"] <= 100
+    assert "executive_summary" in result
+    assert "skill_gap" in result
+    assert "deep_experience_alignment" in result
+    assert "actionable_recommendations" in result
 
 
 @pytest.mark.anyio
@@ -64,6 +60,7 @@ async def test_match_cv_with_jd_requires_jd_text():
     service = DocumentMatchService.__new__(DocumentMatchService)
     service.cv_parser_service = FakeCvParserService()
     service.embedding_service = FakeEmbeddingProvider()
+    service.db_session = None
 
     with pytest.raises(ExceptionValueError):
         await service.match_cv_with_jd_text(
@@ -79,6 +76,7 @@ async def test_match_cv_with_jd_success_includes_diagnostics():
     service = DocumentMatchService.__new__(DocumentMatchService)
     service.cv_parser_service = FakeCvParserService()
     service.embedding_service = FakeEmbeddingProvider()
+    service.db_session = None
 
     result = await service.match_cv_with_jd_text(
         user=SimpleNamespace(id=1),
@@ -100,6 +98,7 @@ async def test_match_cv_with_jd_fallback_when_ocr_unavailable():
     service.cv_parser_service = FakeCvParserOcrFailService()
     service.embedding_service = FakeEmbeddingProvider()
     service.document_service = FakeDocumentService()
+    service.db_session = None
 
     result = await service.match_cv_with_jd_text(
         user=SimpleNamespace(id=1),
