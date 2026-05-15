@@ -66,6 +66,9 @@ class JWTAuthMiddleware(AuthenticationBackend):
         If authentication fails, raise an AuthenticationError.
         """
         try:
+            if request.method == "OPTIONS":
+                return
+
             if request.url.path in configuration.TOKEN_EXCLUDE_URLS:
                 return
 
