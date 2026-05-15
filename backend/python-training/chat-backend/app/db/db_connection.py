@@ -20,7 +20,10 @@ def _asyncpg_ssl_config(ssl_mode: str):
 
     # Match libpq-like behavior for common cloud Postgres setups.
     if normalized in {"allow", "prefer", "require"}:
-        return "require"
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        return ssl_context
 
     ssl_context = ssl.create_default_context()
     if normalized == "verify-ca":

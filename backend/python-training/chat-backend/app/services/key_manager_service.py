@@ -11,6 +11,15 @@ from core.messages import CustomMessageCode
 from cryptography.hazmat.primitives import serialization
 
 
+def _normalize_pem(value: str) -> str:
+    normalized = (value or "").replace("\\n", "\n").strip()
+    if normalized.startswith('"') and normalized.endswith('"'):
+        normalized = normalized[1:-1]
+    if normalized.startswith("'") and normalized.endswith("'"):
+        normalized = normalized[1:-1]
+    return normalized.strip()
+
+
 class KeyManager:
     def __init__(self):
         self.manifest = configuration.RSA_KEY_MANIFEST
@@ -23,8 +32,8 @@ class KeyManager:
             return json.load(f)
 
     def _load_all_keys(self):
-        env_private = configuration.JWT_PRIVATE_KEY_PEM.strip()
-        env_public = configuration.JWT_PUBLIC_KEY_PEM.strip()
+        env_private = _normalize_pem(configuration.JWT_PRIVATE_KEY_PEM)
+        env_public = _normalize_pem(configuration.JWT_PUBLIC_KEY_PEM)
         env_kid = configuration.JWT_CURRENT_KID or "key_env"
         if env_private:
             private_key = serialization.load_pem_private_key(

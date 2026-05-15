@@ -43,7 +43,10 @@ class GoogleAuthService:
                 configuration.GOOGLE_TOKEN_URL,
                 json=data,
             )
-            log.info(f"Successfully exchanged code for token: {response}")
+            log.info(
+                "Successfully exchanged code for token (keys=%s)",
+                list(response.keys()),
+            )
 
             return response
 

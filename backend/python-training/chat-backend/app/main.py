@@ -13,6 +13,17 @@ from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette_context.middleware import RawContextMiddleware
 
 
+def _normalize_pem(value: str) -> str:
+    # Render env values are commonly pasted with escaped newlines (\n).
+    # Convert to real line breaks before cryptography loads the key.
+    normalized = (value or "").replace("\\n", "\n").strip()
+    if normalized.startswith('"') and normalized.endswith('"'):
+        normalized = normalized[1:-1]
+    if normalized.startswith("'") and normalized.endswith("'"):
+        normalized = normalized[1:-1]
+    return normalized.strip()
+
+
 def create_app(skip_auth: bool = False) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -75,7 +86,7 @@ def register_middlewares(app: FastAPI):
 
 def load_rsa_private_key() -> bytes:
     if configuration.JWT_PRIVATE_KEY_PEM.strip():
-        return configuration.JWT_PRIVATE_KEY_PEM.encode("utf-8")
+        return _normalize_pem(configuration.JWT_PRIVATE_KEY_PEM).encode("utf-8")
 
     base_dir = Path(__file__).resolve().parent
     current_kid = configuration.RSA_KEY_MANIFEST.get("current_kid")
