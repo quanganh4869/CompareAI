@@ -1,4 +1,4 @@
-import { Moon, Sun } from "lucide-react";
+﻿import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getStoredTheme, subscribeTheme, toggleStoredTheme } from "../../utils/themeController";
 
@@ -29,11 +29,11 @@ export function ThemeToggleButton({ className = "", compact = false }) {
       ]
         .filter(Boolean)
         .join(" ")}
-      aria-label={isDark ? "Chuyển sang Light Mode" : "Chuyển sang Dark Mode"}
-      title={isDark ? "Light Mode" : "Dark Mode"}
+      aria-label={isDark ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}
+      title={isDark ? "Giao diện sáng" : "Giao diện tối"}
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-      <span className={compact ? "hidden sm:inline" : ""}>{isDark ? "Light" : "Dark"}</span>
+      <span className={compact ? "hidden sm:inline" : ""}>{isDark ? "Sáng" : "Tối"}</span>
     </button>
   );
 }

@@ -64,10 +64,10 @@ const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
 
         <nav className="custom-scrollbar flex flex-1 flex-col gap-y-1 overflow-y-auto px-3 py-6">
           <div className="px-2 pb-2 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Menu chinh
+            Menu chính
           </div>
 
-          <Link to="/dashboard" onClick={onClose} className={navItemClass(isActive(null))} title="Tong quan">
+          <Link to="/dashboard" onClick={onClose} className={navItemClass(isActive(null))} title="Tổng quan">
             <LayoutDashboard
               className={`h-5 w-5 shrink-0 ${
                 isActive(null)
@@ -75,14 +75,14 @@ const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
                   : "text-slate-400 group-hover:text-indigo-600 dark:text-slate-500 dark:group-hover:text-indigo-400"
               }`}
             />
-            <span>Tong quan</span>
+            <span>Tổng quan</span>
           </Link>
 
           <Link
             to="/dashboard?screen=newAnalysis"
             onClick={onClose}
             className={navItemClass(isActive("newAnalysis"))}
-            title="Phan tich moi"
+            title="Phân tích mới"
           >
             <Sparkles
               className={`h-5 w-5 shrink-0 ${
@@ -91,14 +91,14 @@ const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
                   : "text-indigo-500 dark:text-indigo-400"
               }`}
             />
-            <span>Phan tich moi</span>
+            <span>Phân tích mới</span>
           </Link>
 
           <Link
             to="/dashboard?screen=history"
             onClick={onClose}
             className={navItemClass(isActive("history"))}
-            title="Lich su doi chieu"
+            title="Lịch sử đối chiếu"
           >
             <History
               className={`h-5 w-5 shrink-0 ${
@@ -107,14 +107,14 @@ const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
                   : "text-slate-400 group-hover:text-indigo-600 dark:text-slate-500 dark:group-hover:text-indigo-400"
               }`}
             />
-            <span>Lich su doi chieu</span>
+            <span>Lịch sử đối chiếu</span>
           </Link>
 
           <Link
             to="/dashboard?screen=profileCv"
             onClick={onClose}
             className={navItemClass(isActive("profileCv"))}
-            title="Kho ho so"
+            title="Kho hồ sơ"
           >
             <FolderOpen
               className={`h-5 w-5 shrink-0 ${
@@ -123,14 +123,14 @@ const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
                   : "text-slate-400 group-hover:text-indigo-600 dark:text-slate-500 dark:group-hover:text-indigo-400"
               }`}
             />
-            <span>Kho ho so</span>
+            <span>Kho hồ sơ</span>
           </Link>
 
           <Link
             to="/dashboard?screen=statistics"
             onClick={onClose}
             className={navItemClass(isActive("statistics"))}
-            title="Thong ke"
+            title="Thống kê"
           >
             <BarChart
               className={`h-5 w-5 shrink-0 ${
@@ -139,7 +139,7 @@ const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
                   : "text-slate-400 group-hover:text-indigo-600 dark:text-slate-500 dark:group-hover:text-indigo-400"
               }`}
             />
-            <span>Thong ke</span>
+            <span>Thống kê</span>
           </Link>
         </nav>
 
@@ -160,7 +160,7 @@ const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
               </div>
               <div className="flex min-w-0 flex-col">
                 <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                  {user?.name ? user.name.toUpperCase() : "NGUOI DUNG"}
+                  {user?.name ? user.name.toUpperCase() : "NGƯỜI DÙNG"}
                 </span>
               </div>
             </div>
@@ -169,7 +169,7 @@ const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
               to="/thong-tin-nguoi-dung"
               onClick={onClose}
               className="rounded-lg p-2 text-slate-400 transition-all hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-indigo-400"
-              title="Cai dat"
+              title="Cài đặt"
             >
               <Settings className="h-5 w-5" />
             </Link>
