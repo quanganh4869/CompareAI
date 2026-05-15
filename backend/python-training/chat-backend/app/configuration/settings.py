@@ -13,7 +13,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    PROJECT_NAME: str
+    PROJECT_NAME: str = "Chat Backend Service"
     ENVIRONMENT: Literal["unittest", "develop", "testing", "staging", "production"]
     BACKEND_CORS_ORIGINS: list[str] = []
     BACKEND_CORS_METHODS: list[str] = [
@@ -107,8 +107,8 @@ class Settings(BaseSettings):
         "https://accounts.google.com",
     ]
 
-    GOOGLE_CLIENT_ID: str
-    GOOGLE_CLIENT_SECRET: str
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/v1_0/auth/login/google/callback"
     FRONTEND_URL: str = "http://localhost:3000"
 
