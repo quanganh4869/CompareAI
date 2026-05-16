@@ -3,11 +3,12 @@ import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../config/api";
 import { getAccessToken, setOnboardingDone, syncUserSessionFromBackend } from "../utils/authSession";
+import { authFetch } from "../utils/authFetch";
 import OnboardingWizard from "../features/onboarding/OnboardingWizard";
 
 async function fetchCurrentUser(accessToken) {
   try {
-    const response = await fetch(`${API_BASE_URL}/v1_0/user/me`, {
+    const response = await authFetch(`${API_BASE_URL}/v1_0/user/me`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },

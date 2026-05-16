@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "../config/api";
 import { clearAuthSession, getAccessToken } from "../utils/authSession";
+import { authFetch } from "../utils/authFetch";
 
 function redirectToLanding() {
   clearAuthSession();
@@ -33,7 +34,7 @@ async function parseApiResponse(response) {
 }
 
 async function directUploadDocument({ token, documentType, formData }) {
-  const response = await fetch(
+  const response = await authFetch(
     `${API_BASE_URL}/v1_0/document/upload/${documentType}`,
     {
       method: "POST",
@@ -52,7 +53,7 @@ export async function fetchMyDocuments({ documentType } = {}) {
   const query = documentType
     ? `?document_type=${encodeURIComponent(documentType)}`
     : "";
-  const response = await fetch(`${API_BASE_URL}/v1_0/document${query}`, {
+  const response = await authFetch(`${API_BASE_URL}/v1_0/document${query}`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -108,7 +109,7 @@ export async function uploadJdDocument({ title, company, summary, file }) {
 
 export async function createDocumentDownloadUrl({ documentId, expiresIn }) {
   const token = getAuthTokenOrThrow();
-  const response = await fetch(
+  const response = await authFetch(
     `${API_BASE_URL}/v1_0/document/${documentId}/access-url`,
     {
       method: "POST",
@@ -127,7 +128,7 @@ export async function createDocumentDownloadUrl({ documentId, expiresIn }) {
 
 export async function createDocumentImageUrl({ documentId, expiresIn }) {
   const token = getAuthTokenOrThrow();
-  const response = await fetch(
+  const response = await authFetch(
     `${API_BASE_URL}/v1_0/document/${documentId}/access-url`,
     {
       method: "POST",
@@ -146,7 +147,7 @@ export async function createDocumentImageUrl({ documentId, expiresIn }) {
 
 export async function deleteDocument({ documentId }) {
   const token = getAuthTokenOrThrow();
-  const response = await fetch(`${API_BASE_URL}/v1_0/document/${documentId}`, {
+  const response = await authFetch(`${API_BASE_URL}/v1_0/document/${documentId}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -157,7 +158,7 @@ export async function deleteDocument({ documentId }) {
 
 export async function parseCvDocument({ documentId }) {
   const token = getAuthTokenOrThrow();
-  const response = await fetch(
+  const response = await authFetch(
     `${API_BASE_URL}/v1_0/document/${documentId}/cv-parse`,
     {
       method: "GET",
@@ -171,7 +172,7 @@ export async function parseCvDocument({ documentId }) {
 
 export async function matchCvWithJdText({ cvDocumentId, jdText }) {
   const token = getAuthTokenOrThrow();
-  const response = await fetch(`${API_BASE_URL}/v1_0/document/match-score`, {
+  const response = await authFetch(`${API_BASE_URL}/v1_0/document/match-score`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

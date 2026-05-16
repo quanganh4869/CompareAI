@@ -25,6 +25,11 @@ export function getAccessToken() {
   return window.localStorage.getItem(ACCESS_TOKEN_KEY) || "";
 }
 
+export function getRefreshToken() {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(REFRESH_TOKEN_KEY) || "";
+}
+
 export function saveAuthUser(user) {
   if (typeof window === "undefined") return;
   if (!user) return;

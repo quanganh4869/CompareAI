@@ -7,6 +7,7 @@ import {
   syncUserSessionFromBackend,
 } from "../utils/authSession";
 import { dispatchNotice } from "../utils/notice";
+import { authFetch } from "../utils/authFetch";
 
 const UserContext = createContext(null);
 
@@ -25,7 +26,7 @@ export const UserProvider = ({ children }) => {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/v1_0/user/me`, {
+      const response = await authFetch(`${API_BASE_URL}/v1_0/user/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

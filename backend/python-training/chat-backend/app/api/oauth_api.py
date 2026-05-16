@@ -9,7 +9,7 @@ from core.exception_handler.custom_exception import ExceptionValueError
 from core.messages import CustomMessageCode
 from db.db_connection import Database
 from fastapi import APIRouter, Depends, status
-from schemas.requests.google_auth_schema import GoogleLoginRequest
+from schemas.requests.google_auth_schema import GoogleLoginRequest, RefreshTokenRequest
 from services.google_auth_service import GoogleAuthService
 from services.key_manager_service import KeyManager
 from services.user_auth_service import UserAuthService
@@ -64,7 +64,10 @@ async def google_login_callback(
 
         redirect_url = (
             f"{configuration.FRONTEND_URL}/google-callback#"
-            f"access_token={login_result.access_token}&token_type=bearer"
+            f"access_token={login_result.access_token}"
+            f"&refresh_token={login_result.refresh_token}"
+            f"&token_type=bearer"
+            f"&expires_in={login_result.expires_in}"
         )
         return RedirectResponse(url=redirect_url)
 
@@ -115,6 +118,34 @@ async def login_google(
 
     except Exception as e:
         log.error(f"Failed to process Google login POST: {e}")
+        return ApiResponse.error(
+            message=CustomMessageCode.UNKNOWN_ERROR.title,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@router.post("/refresh")
+@api_version(1, 0)
+@measure_time
+async def refresh_token(
+    request_data: RefreshTokenRequest,
+    db_session: Annotated[AsyncSession, Depends(Database.get_async_db_session)],
+):
+    """Refresh access token from refresh token."""
+    try:
+        auth_service = UserAuthService(db_session=db_session)
+        async with db_session.begin():
+            result = await auth_service.refresh_access_token(
+                refresh_token=request_data.refresh_token
+            )
+        return ApiResponse.success(data=result.model_dump())
+    except ValueError as e:
+        return ApiResponse.error(
+            message=str(e) or "Invalid refresh token.",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+    except Exception as e:
+        log.error(f"Failed to refresh token: {e}")
         return ApiResponse.error(
             message=CustomMessageCode.UNKNOWN_ERROR.title,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

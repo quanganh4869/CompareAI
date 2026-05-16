@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../../config/api";
 import { getAccessToken, setOnboardingDone, syncUserSessionFromBackend } from "../../utils/authSession";
+import { authFetch } from "../../utils/authFetch";
 
 type Role = "" | "candidate" | "recruiter";
 
@@ -445,7 +446,7 @@ function PlanSelectionStep({
   );
 }
 async function fetchSubscriptionPlans(accessToken: string): Promise<PlanOption[]> {
-  const response = await fetch(`${API_BASE_URL}/v1_0/user/plans`, {
+  const response = await authFetch(`${API_BASE_URL}/v1_0/user/plans`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -462,7 +463,7 @@ async function fetchSubscriptionPlans(accessToken: string): Promise<PlanOption[]
 
 async function submitUserRole(accessToken: string, role: Role) {
   const roleName = role === "recruiter" ? "HR" : "user";
-  const response = await fetch(`${API_BASE_URL}/v1_0/user/role/${roleName}`, {
+  const response = await authFetch(`${API_BASE_URL}/v1_0/user/role/${roleName}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -479,7 +480,7 @@ async function submitUserRole(accessToken: string, role: Role) {
 
 async function submitUserPlan(accessToken: string, planName: string) {
   const safePlanName = String(planName || "").trim() || "free";
-  const response = await fetch(`${API_BASE_URL}/v1_0/user/plan/${safePlanName}`, {
+  const response = await authFetch(`${API_BASE_URL}/v1_0/user/plan/${safePlanName}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,

@@ -12,7 +12,10 @@ import { useUser } from "../features/UserContext";
 
 function parseAccessTokenFromHash(hash) {
   const params = new URLSearchParams(String(hash || "").replace(/^#/, ""));
-  return params.get("access_token") || "";
+  return {
+    accessToken: params.get("access_token") || "",
+    refreshToken: params.get("refresh_token") || "",
+  };
 }
 
 async function fetchCurrentUser(accessToken) {
@@ -40,8 +43,8 @@ export default function LoginPage() {
   const redirectLoginUrl = useMemo(() => `${API_BASE_URL}/v1_0/auth/login/google`, []);
 
   const completeLogin = useCallback(
-    async (accessToken) => {
-      saveAuthSession({ accessToken });
+    async (accessToken, refreshToken = "") => {
+      saveAuthSession({ accessToken, refreshToken });
       const me = await fetchCurrentUser(accessToken);
       syncUserSessionFromBackend(me);
       setUser(me);
@@ -61,7 +64,9 @@ export default function LoginPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const tokenFromHash = parseAccessTokenFromHash(window.location.hash);
+    const { accessToken: tokenFromHash, refreshToken } = parseAccessTokenFromHash(
+      window.location.hash,
+    );
     const query = new URLSearchParams(window.location.search);
     const callbackError = query.get("error") || query.get("error_code");
 
@@ -74,7 +79,7 @@ export default function LoginPage() {
     setIsLoading(true);
     setError("");
 
-    completeLogin(tokenFromHash)
+    completeLogin(tokenFromHash, refreshToken)
       .catch((e) => {
         setError(e instanceof Error ? e.message : "Đăng nhập thất bại.");
       })

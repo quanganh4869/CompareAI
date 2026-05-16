@@ -86,6 +86,51 @@ class UserAuthService:
             log.error(f"Failed to create access token: {e}")
             raise
 
+    async def refresh_access_token(self, refresh_token: str) -> OAuthTokenResponse:
+        try:
+            refresh_token = str(refresh_token or "").strip()
+            if not refresh_token:
+                raise ValueError("Missing refresh token.")
+
+            result = await self.db_session.execute(
+                select(OAuthToken)
+                .options(selectinload(OAuthToken.user))
+                .where(OAuthToken.refresh_token == refresh_token)
+            )
+            existing_token = result.scalar_one_or_none()
+            if not existing_token or not existing_token.user:
+                raise ValueError("Invalid refresh token.")
+
+            user = existing_token.user
+            jwt_token = encode_jwt_token(
+                key_id=configuration.JWT_CURRENT_KID
+                or configuration.RSA_KEY_MANIFEST.get("current_kid"),
+                jwt_secret_key=configuration.JWT_RSA_PRIVATE_KEY,
+                jwt_algorithm=configuration.JWT_ALGORITHM,
+                access_token_expire_minutes=configuration.ACCESS_TOKEN_EXPIRE_MINUTES,
+                scope=" ".join(configuration.GOOGLE_SCOPES),
+                user=user,
+            )
+
+            existing_token.access_token = jwt_token["access_token"]
+            existing_token.refresh_token = jwt_token["refresh_token"]
+            existing_token.expires_at = datetime.now(timezone.utc) + timedelta(
+                seconds=jwt_token["expires_in"]
+            )
+            self.db_session.add(existing_token)
+            await self.db_session.flush()
+
+            return OAuthTokenResponse(
+                access_token=jwt_token["access_token"],
+                refresh_token=jwt_token["refresh_token"],
+                token_type=TOKEN_PREFIX,
+                expires_in=jwt_token["expires_in"],
+                user=user,
+            )
+        except Exception as e:
+            log.error(f"Failed to refresh access token: {e}")
+            raise
+
     async def _get_identity(self, provider_user_id: str) -> AuthIdentity | None:
         result = await self.db_session.execute(
             select(AuthIdentity)
