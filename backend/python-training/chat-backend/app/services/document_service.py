@@ -182,6 +182,14 @@ class DocumentService:
         upload_root = str(configuration.UPLOAD_DIR or "").replace("\\", "/").strip("/")
         if upload_root and raw_key.startswith(f"{upload_root}/"):
             return raw_key[len(upload_root) + 1 :]
+
+        # Support absolute/embedded local paths, e.g. `/app/uploads/cv/file.pdf`
+        # or `app/uploads/cv/file.pdf`.
+        segments = [part for part in raw_key.split("/") if part]
+        if upload_root and upload_root in segments:
+            idx = segments.index(upload_root)
+            if idx + 1 < len(segments):
+                return "/".join(segments[idx + 1 :])
         return None
 
     @staticmethod
@@ -463,6 +471,12 @@ class DocumentService:
             except ExceptionValueError:
                 migrated_key = self._normalize_legacy_local_key_for_object_storage(key)
                 if migrated_key and migrated_key != key:
+                    log.warning(
+                        "access_url_try_legacy_key_migration document_id=%s old_key=%s migrated_key=%s",
+                        document.id,
+                        key,
+                        migrated_key,
+                    )
                     await self._ensure_object_exists(migrated_key)
                     document.storage_key = migrated_key
                     self.db_session.add(document)
