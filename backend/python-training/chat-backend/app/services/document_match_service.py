@@ -72,7 +72,7 @@ TECH_STACK_LIBRARY = [
 ]
 
 YEARS_PATTERNS = [
-    r"(\d+)\s*\+?\s*(?:nam|year|years)\b",
+    r"(\d+)\s*\+?\s*(?:năm|nam|year|years)\b",
     r"(?:exp|experience)\D*(\d+)",
 ]
 
@@ -308,26 +308,26 @@ class DocumentMatchService:
     ) -> str:
         skill_hint = ", ".join(matched_skills[:3]) if matched_skills else "chua co nhieu skill trung khop"
         exp_hint = (
-            f"kinh nghiem {cv_exp} nam so voi yeu cau {jd_exp} nam"
+            f"kinh nghiệm {cv_exp} năm so với yêu cầu {jd_exp} năm"
             if jd_exp > 0
-            else f"kinh nghiem hien tai khoang {cv_exp} nam"
+            else f"kinh nghiệm hiện tại khoảng {cv_exp} năm"
         )
         tone = (
-            "ho so dang rat sat nhu cau"
+            "hồ sơ đang rất sát nhu cầu"
             if score >= 75
             else (
-                "ho so co tiem nang, can bo sung mot vai diem de tang do tin cay"
+                "hồ sơ có tiềm năng, cần bổ sung một vài điểm để tăng độ tin cậy"
                 if score >= 50
-                else "ho so can them minh chung thuc te de thuyet phuc hon"
+                else "hồ sơ cần thêm minh chứng thực tế để thuyết phục hơn"
             )
         )
 
         return (
-            f"Tong quan: muc do phu hop hien tai la {score}%, {tone}. "
-            f"Diem sang de khai thac la {skill_hint}; dong thoi can doi chieu them ve {exp_hint}. "
-            f"Vi du du an de nha tuyen dung hinh dung ro hon: {project_example}. "
-            "Neu ban trinh bay duoc ket qua, vai tro, va pham vi anh huong trong du an nay, "
-            "danh gia se tang len ro ret."
+            f"Tổng quan: mức độ phù hợp hiện tại là {score}%, {tone}. "
+            f"Điểm sáng để khai thác là {skill_hint}; đồng thời cần đối chiếu thêm về {exp_hint}. "
+            f"Ví dụ dự án để nhà tuyển dụng hình dung rõ hơn: {project_example}. "
+            "Nếu bạn trình bày được kết quả, vai trò, và phạm vi ảnh hưởng trong dự án này, "
+            "đánh giá sẽ tăng lên rõ rệt."
         )
 
     @staticmethod
@@ -338,11 +338,16 @@ class DocumentMatchService:
 
         sentences = re.split(r"[\n\.\!\?;]+", raw)
         keywords = {
+            "dự án",
             "du an",
             "project",
+            "xây dựng",
             "xay dung",
+            "thiết kế",
             "thiet ke",
+            "triển khai",
             "trien khai",
+            "tối ưu",
             "toi uu",
             "api",
             "microservice",
@@ -380,19 +385,19 @@ class DocumentMatchService:
         if strong_skills:
             skill_text = ", ".join(strong_skills)
             return (
-                f"Xay mot module thuc te voi {skill_text}: viet API, ket noi database, "
-                "va trinh bay ro cach toi uu hieu nang hoac xu ly loi."
+                f"Xây một module thực tế với {skill_text}: viết API, kết nối database, "
+                "và trình bày rõ cách tối ưu hiệu năng hoặc xử lý lỗi."
             )
 
         if missing_skills:
             return (
-                "Thu lam mini-project bo sung cac ky nang con thieu, "
-                "vi du mot API CRUD co logging, test, va docker compose."
+                "Thử làm mini-project bổ sung các kỹ năng còn thiếu, "
+                "ví dụ một API CRUD có logging, test, và docker compose."
             )
 
         return (
-            "Mo ta mot du an gan day theo cau truc: bai toan, giai phap ky thuat, "
-            "vai tro cua ban, ket qua do duoc."
+            "Mô tả một dự án gần đây theo cấu trúc: bài toán, giải pháp kỹ thuật, "
+            "vai trò của bạn, kết quả đo được."
         )
 
     def _build_deep_experience_alignment(
@@ -406,37 +411,37 @@ class DocumentMatchService:
         return [
             {
                 "requirement": (
-                    f"Yeu cau kinh nghiem {jd_exp} nam."
+                    f"Yêu cầu kinh nghiệm {jd_exp} năm."
                     if jd_exp > 0
-                    else "JD khong neu ro so nam kinh nghiem, can minh chung qua du an."
+                    else "JD không nêu rõ số năm kinh nghiệm, cần minh chứng qua dự án."
                 ),
-                "candidate_reality": f"Ung vien hien co khoang {cv_exp} nam kinh nghiem.",
+                "candidate_reality": f"Ứng viên hiện có khoảng {cv_exp} năm kinh nghiệm.",
                 "severity": "High" if jd_exp > 0 and cv_exp < jd_exp else "Low",
                 "hr_comment": (
-                    f"Vi du de doi chieu: {project_example}. "
-                    "Neu du an co quy mo va do kho tuong duong voi bai toan JD, diem tin cay tang manh."
+                    f"Ví dụ để đối chiếu: {project_example}. "
+                    "Nếu dự án có quy mô và độ khó tương đương với bài toán JD, điểm tin cậy tăng mạnh."
                 ),
             },
             {
-                "requirement": "Do phu hop tech stack voi nhu cau cong viec.",
+                "requirement": "Độ phù hợp tech stack với nhu cầu công việc.",
                 "candidate_reality": (
-                    "Da trung cac ky nang: " + ", ".join(matched_skills[:5])
+                    "Đã trùng các kỹ năng: " + ", ".join(matched_skills[:5])
                     if matched_skills
-                    else "Chua tim thay ky nang trung khop ro rang tu CV."
+                    else "Chưa tìm thấy kỹ năng trùng khớp rõ ràng từ CV."
                 ),
                 "severity": "Medium" if missing_skills else "Low",
                 "hr_comment": (
-                    "Can viet ro trong mot du an cu the ban da dung nhung stack nay nhu the nao, "
-                    "tranh liet ke chung chung."
+                    "Cần viết rõ trong một dự án cụ thể bạn đã dùng những stack này như thế nào, "
+                    "tránh liệt kê chung chung."
                 ),
             },
             {
-                "requirement": "Can minh chung tac dong thuc te (impact) trong du an.",
-                "candidate_reality": "CV da co mo ta cong viec, nhung can them KPI/do luong ket qua.",
+                "requirement": "Cần minh chứng tác động thực tế (impact) trong dự án.",
+                "candidate_reality": "CV đã có mô tả công việc, nhưng cần thêm KPI/đo lường kết quả.",
                 "severity": "Medium",
                 "hr_comment": (
-                    f"Goi y viet theo mau du an: '{project_example}' + ket qua do duoc "
-                    "(VD: giam latency 30%, tang throughput 2x, giam loi production)."
+                    f"Gợi ý viết theo mẫu dự án: '{project_example}' + kết quả đo được "
+                    "(VD: giảm latency 30%, tăng throughput 2x, giảm lỗi production)."
                 ),
             },
         ]
@@ -452,33 +457,33 @@ class DocumentMatchService:
         prioritized_match = matched_skills[:3]
 
         issue = (
-            "Thieu minh chung ky nang cho nhom: " + ", ".join(prioritized_missing)
+            "Thiếu minh chứng kỹ năng cho nhóm: " + ", ".join(prioritized_missing)
             if prioritized_missing
-            else "Can tang do cu the khi mo ta vai tro va ket qua trong du an."
+            else "Cần tăng độ cụ thể khi mô tả vai trò và kết quả trong dự án."
         )
 
         if prioritized_match:
             solution = (
-                "Hay dung ngay cac ky nang ban da co ("
+                "Hãy dùng ngay các kỹ năng bạn đã có ("
                 + ", ".join(prioritized_match)
-                + ") de viet lai phan kinh nghiem theo format STAR (Situation-Task-Action-Result)."
+                + ") để viết lại phần kinh nghiệm theo format STAR (Situation-Task-Action-Result)."
             )
         elif jd_skills:
             solution = (
-                "Chon 1-2 ky nang quan trong trong JD ("
+                "Chọn 1-2 kỹ năng quan trọng trong JD ("
                 + ", ".join(jd_skills[:2])
-                + ") va bo sung mini-project de tao minh chung thuc te."
+                + ") và bổ sung mini-project để tạo minh chứng thực tế."
             )
         else:
             solution = (
-                "Bo sung mo ta du an theo huong ket qua do duoc, thay vi mo ta cong viec chung chung."
+                "Bổ sung mô tả dự án theo hướng kết quả đo được, thay vì mô tả công việc chung chung."
             )
 
         rewrite_example = (
-            "Nen viet: 'Trong du an "
+            "Nên viết: 'Trong dự án "
             + project_example
-            + ", toi phu trach thiet ke API, toi uu truy van, giam thoi gian phan hoi 35%, "
-              "dong thoi them monitoring canh bao loi production'."
+            + ", tôi phụ trách thiết kế API, tối ưu truy vấn, giảm thời gian phản hồi 35%, "
+              "đồng thời thêm monitoring cảnh báo lỗi production'."
         )
 
         return [
@@ -488,4 +493,3 @@ class DocumentMatchService:
                 "cv_rewrite_example": rewrite_example,
             }
         ]
-

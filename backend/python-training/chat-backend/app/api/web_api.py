@@ -32,7 +32,7 @@ async def analyze(
                 "request": request,
                 "result": {
                     "overall_score": 0,
-                    "executive_summary": "Vui long tai len CV de he thong phan tich.",
+                    "executive_summary": "Vui lòng tải lên CV để hệ thống phân tích.",
                     "skill_gap": {
                         "matched_hard_skills": [],
                         "missing_hard_skills": [],
@@ -42,7 +42,7 @@ async def analyze(
                     "deep_experience_alignment": [],
                     "actionable_recommendations": [],
                 },
-                "candidate_name": "Ung vien",
+                "candidate_name": "Ứng viên",
                 "active_page": "dashboard",
             },
         )
@@ -56,13 +56,13 @@ async def analyze(
         cv_text = (extracted_text or "").strip()
     except Exception as exc:
         raise ExceptionValueError(
-            message=f"Khong the doc CV: {exc}",
+            message=f"Không thể đọc CV: {exc}",
             status_code=422,
         ) from exc
 
     if not cv_text:
         raise ExceptionValueError(
-            message=f"Khong the trich xuat noi dung CV tu file {cv_file.filename}.",
+            message=f"Không thể trích xuất nội dung CV từ file {cv_file.filename}.",
             status_code=422,
         )
 
@@ -73,7 +73,7 @@ async def analyze(
         {
             "request": request,
             "result": result,
-            "candidate_name": cv_file.filename if cv_file else "Ung vien",
+            "candidate_name": cv_file.filename if cv_file else "Ứng viên",
             "active_page": "dashboard",
         },
     )
