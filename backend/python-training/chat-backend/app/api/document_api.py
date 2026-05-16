@@ -32,6 +32,8 @@ from schemas.responses.document_schema import (
     CvParsedResponse,
     DocumentDeleteResponse,
     DocumentDownloadUrlResponse,
+    DocumentMatchDetailResponse,
+    DocumentMatchHistoryListResponse,
     DocumentMatchScoreResponse,
     DocumentResponse,
 )
@@ -291,6 +293,48 @@ async def match_cv_with_jd_score(
     )
 
 
+@router.get("/match-history")
+@api_version(1, 0)
+@measure_time
+async def list_match_history(
+    user: UserOrHRDep,
+    service: DocumentMatchServiceDep,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    return await _service_response(
+        user_id=user.id,
+        action="list match history",
+        success_message="Match history fetched successfully",
+        producer=lambda: _match_history_list_data(
+            service=service,
+            user=user,
+            limit=limit,
+            offset=offset,
+        ),
+    )
+
+
+@router.get("/match-history/{analysis_id}")
+@api_version(1, 0)
+@measure_time
+async def get_match_history_detail(
+    analysis_id: int,
+    user: UserOrHRDep,
+    service: DocumentMatchServiceDep,
+):
+    return await _service_response(
+        user_id=user.id,
+        action="get match history detail",
+        success_message="Match history detail fetched successfully",
+        producer=lambda: _match_history_detail_data(
+            service=service,
+            user=user,
+            analysis_id=analysis_id,
+        ),
+    )
+
+
 async def _direct_upload_data(
     service: DocumentService,
     user: User,
@@ -372,6 +416,32 @@ async def _match_score_data(
         jd_text=payload.jd_text,
     )
     return DocumentMatchScoreResponse(**response).model_dump()
+
+
+async def _match_history_list_data(
+    service: DocumentMatchService,
+    user: User,
+    limit: int,
+    offset: int,
+):
+    response = await service.list_match_history(
+        user=user,
+        limit=limit,
+        offset=offset,
+    )
+    return DocumentMatchHistoryListResponse(**response).model_dump(mode="json")
+
+
+async def _match_history_detail_data(
+    service: DocumentMatchService,
+    user: User,
+    analysis_id: int,
+):
+    response = await service.get_match_history_detail(
+        user=user,
+        analysis_id=analysis_id,
+    )
+    return DocumentMatchDetailResponse(**response).model_dump(mode="json")
 
 
 def _list_documents_success_mapper(data: object, _: str) -> dict[str, Any]:

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+﻿import React, { useEffect, useRef, useState, useCallback } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useLocation, useNavigate } from "react-router-dom";
 import MainLayout from "../components/layout/MainLayout";
@@ -11,6 +11,9 @@ import {
   deleteDocument,
   createDocumentDownloadUrl,
   parseCvDocument,
+  fetchMyDocuments,
+  fetchMatchHistory,
+  fetchMatchHistoryDetail,
 } from "../api/documents";
 import {
   BarChart,
@@ -33,12 +36,11 @@ import {
   Trash2,
   ArrowLeft
 } from "lucide-react";
-import { fetchMyDocuments } from "../api/documents";
 import { CvDetailWindow } from "../features/aiInterview/components/modals";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { ComparingOverlay } from "../components/ui/ComparingOverlay";
 
-/* ─── Helpers ─── */
+/* â”€â”€â”€ Helpers â”€â”€â”€ */
 function getScoreColorClass(score) {
   if (score >= 80) return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30";
   if (score >= 60) return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30";
@@ -51,7 +53,7 @@ function getScoreRingColor(score) {
   return "#F43F5E"; // rose-500
 }
 
-/* ─── Mini Circular Progress ─── */
+/* â”€â”€â”€ Mini Circular Progress â”€â”€â”€ */
 function MiniProgressRing({ value, size = 56, strokeWidth = 5 }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -87,7 +89,7 @@ function MiniProgressRing({ value, size = 56, strokeWidth = 5 }) {
   );
 }
 
-/* ─── Upload Slot ─── */
+/* â”€â”€â”€ Upload Slot â”€â”€â”€ */
 function UploadSlot({ label, hint, file, onRemove, onOpenLibrary, onOpenDetail, icon: Icon }) {
   return (
     <div 
@@ -103,7 +105,7 @@ function UploadSlot({ label, hint, file, onRemove, onOpenLibrary, onOpenDetail, 
             e.stopPropagation();
             onRemove();
           }}
-          title="Bỏ chọn"
+          title="Bá» chá»n"
         >
           <X className="h-4 w-4" />
         </button>
@@ -117,7 +119,7 @@ function UploadSlot({ label, hint, file, onRemove, onOpenLibrary, onOpenDetail, 
       
       <div className="text-center">
         <h4 className={`text-lg font-bold mb-2 ${file ? "text-indigo-900 dark:text-indigo-300" : "text-slate-900 dark:text-slate-100"}`}>
-          {file ? "Đã chọn hồ sơ" : label}
+          {file ? "ÄÃ£ chá»n há»“ sÆ¡" : label}
         </h4>
         
         {file ? (
@@ -126,7 +128,7 @@ function UploadSlot({ label, hint, file, onRemove, onOpenLibrary, onOpenDetail, 
               {file.file_name}
             </span>
             <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500">
-              PDF Document • ID: #{file.id}
+              PDF Document â€¢ ID: #{file.id}
             </span>
             
             <div className="flex items-center gap-2 mt-4">
@@ -135,14 +137,14 @@ function UploadSlot({ label, hint, file, onRemove, onOpenLibrary, onOpenDetail, 
                 onClick={(e) => { e.stopPropagation(); onOpenDetail(file); }}
                 className="px-4 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
-                Xem chi tiết
+                Xem chi tiáº¿t
               </button>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onOpenLibrary(); }}
                 className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm"
               >
-                Thay đổi
+                Thay Ä‘á»•i
               </button>
             </div>
           </div>
@@ -157,7 +159,7 @@ function UploadSlot({ label, hint, file, onRemove, onOpenLibrary, onOpenDetail, 
               className="inline-flex items-center justify-center px-8 py-3 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-xl transition-all shadow-md shadow-indigo-500/20 active:scale-95"
             >
               <Search className="h-4 w-4 mr-2" />
-              Chọn từ kho hồ sơ
+              Chá»n tá»« kho há»“ sÆ¡
             </button>
           </>
         )}
@@ -174,7 +176,7 @@ const DashboardPage = () => {
   const queryParams = new URLSearchParams(location.search);
   const currentScreen = queryParams.get("screen");
 
-  /* ── Upload state ── */
+  /* â”€â”€ Upload state â”€â”€ */
   const [cvFile, setCvFile] = useState(null);
   const [selectedCvForDetail, setSelectedCvForDetail] = useState(null);
   const [cvPreviewUrl, setCvPreviewUrl] = useState("");
@@ -189,7 +191,7 @@ const DashboardPage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const libraryInputRef = useRef(null);
 
-  /* ── Confirmation state ── */
+  /* â”€â”€ Confirmation state â”€â”€ */
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
     title: "",
@@ -202,8 +204,8 @@ const DashboardPage = () => {
   const askConfirmation = (config) => {
     setConfirmConfig({
       isOpen: true,
-      title: config.title || "Xác nhận",
-      message: config.message || "Bạn có chắc chắn muốn thực hiện hành động này?",
+      title: config.title || "XÃ¡c nháº­n",
+      message: config.message || "Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n thá»±c hiá»‡n hÃ nh Ä‘á»™ng nÃ y?",
       confirmText: config.confirmText,
       cancelText: config.cancelText,
       tone: config.tone || "danger",
@@ -215,9 +217,10 @@ const DashboardPage = () => {
     });
   };
 
-  /* ── Data state ── */
-  const [recentActivity] = useState([]);
-  const [stats] = useState({
+  /* â”€â”€ Data state â”€â”€ */
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [stats, setStats] = useState({
     totalAnalyses: 0,
     avgScore: 0,
     optimizedCvs: 0,
@@ -229,11 +232,52 @@ const DashboardPage = () => {
     }
   }, [navigate]);
 
+  const loadMatchHistory = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const payload = await fetchMatchHistory({ limit: 30, offset: 0 });
+      const items = payload?.items || [];
+      setRecentActivity(items);
+
+      const totalAnalyses = payload?.total || 0;
+      const avgScore = items.length
+        ? Math.round(
+            items.reduce((acc, item) => acc + (Number(item.overall_score) || 0), 0) /
+              items.length,
+          )
+        : 0;
+      const optimizedCvs = items.filter(
+        (item) => Number(item.overall_score) >= 80,
+      ).length;
+
+      setStats({
+        totalAnalyses,
+        avgScore,
+        optimizedCvs,
+      });
+    } catch (err) {
+      console.error("Failed to load match history:", err);
+      dispatchNotice({
+        tone: "danger",
+        title: "Lá»—i",
+        message: "KhÃ´ng thá»ƒ táº£i lá»‹ch sá»­ Ä‘á»‘i chiáº¿u.",
+      });
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (currentScreen === "profileCv") {
       loadLibrary();
     }
   }, [currentScreen]);
+
+  useEffect(() => {
+    if (currentScreen === "history" || !currentScreen) {
+      loadMatchHistory();
+    }
+  }, [currentScreen, loadMatchHistory]);
 
   const loadLibrary = async () => {
     setLoadingLibrary(true);
@@ -244,8 +288,8 @@ const DashboardPage = () => {
       console.error("Failed to load library:", err);
       dispatchNotice({
         tone: "danger",
-        title: "Lỗi",
-        message: "Không thể tải danh sách tài liệu từ kho.",
+        title: "Lá»—i",
+        message: "KhÃ´ng thá»ƒ táº£i danh sÃ¡ch tÃ i liá»‡u tá»« kho.",
       });
     } finally {
       setLoadingLibrary(false);
@@ -257,13 +301,46 @@ const DashboardPage = () => {
     loadLibrary();
   };
 
-  /* ── Handlers ── */
+  const handleViewReport = async (analysisId) => {
+    try {
+      const detail = await fetchMatchHistoryDetail({ analysisId });
+      const result = detail?.result || {};
+      const cvFileName = detail?.cv_file_name || "á»¨ng viÃªn";
+      const cvRole = detail?.cv_metadata_json?.target_role || "ChÆ°a xÃ¡c Ä‘á»‹nh";
+      const jdText = detail?.jd_text || "";
+
+      const enrichedResult = {
+        ...result,
+        candidate_name: cvFileName.split(".")[0] || "á»¨ng viÃªn",
+        candidate_title: cvRole,
+        job_title: jdText.trim().split("\n")[0].substring(0, 80) || "Vá»‹ trÃ­ tuyá»ƒn dá»¥ng",
+        years_of_experience: "N/A",
+        education: detail?.cv_metadata_json?.education || "N/A",
+      };
+
+      navigate("/cv-screening-demo", {
+        state: {
+          matchResult: enrichedResult,
+          reportId: analysisId,
+          timestamp: Date.now(),
+        },
+      });
+    } catch (error) {
+      dispatchNotice({
+        tone: "danger",
+        title: "Lá»—i",
+        message: error?.message || "KhÃ´ng thá»ƒ táº£i chi tiáº¿t bÃ¡o cÃ¡o.",
+      });
+    }
+  };
+
+  /* â”€â”€ Handlers â”€â”€ */
   const handleAnalyze = async () => {
     if (!cvFile || !jdText.trim()) {
       dispatchNotice({
         tone: "warning",
-        title: "Thiếu dữ liệu",
-        message: "Vui lòng chọn hồ sơ từ kho và nhập Mô tả công việc (JD) trước khi phân tích.",
+        title: "Thiáº¿u dá»¯ liá»‡u",
+        message: "Vui lÃ²ng chá»n há»“ sÆ¡ tá»« kho vÃ  nháº­p MÃ´ táº£ cÃ´ng viá»‡c (JD) trÆ°á»›c khi phÃ¢n tÃ­ch.",
       });
       return;
     }
@@ -284,10 +361,10 @@ const DashboardPage = () => {
       // Enrich result with metadata for display
       const enrichedResult = {
         ...matchResult,
-        candidate_name: cvFile?.file_name?.split('.')[0] || "Ứng viên",
-        candidate_title: cvFile?.metadata_json?.target_role || "Chưa xác định",
-        job_title: jdText.trim().split('\n')[0].substring(0, 50) || "Vị trí tuyển dụng",
-        years_of_experience: `${matchResult?.experience?.cv || 0} năm`,
+        candidate_name: cvFile?.file_name?.split('.')[0] || "á»¨ng viÃªn",
+        candidate_title: cvFile?.metadata_json?.target_role || "ChÆ°a xÃ¡c Ä‘á»‹nh",
+        job_title: jdText.trim().split('\n')[0].substring(0, 50) || "Vá»‹ trÃ­ tuyá»ƒn dá»¥ng",
+        years_of_experience: `${matchResult?.experience?.cv || 0} nÄƒm`,
         education: cvFile?.metadata_json?.education || "N/A"
       };
 
@@ -302,23 +379,23 @@ const DashboardPage = () => {
 
       dispatchNotice({
         tone: "success",
-        title: "Hoàn tất",
-        message: "Phân tích CV & JD hoàn tất!",
+        title: "HoÃ n táº¥t",
+        message: "PhÃ¢n tÃ­ch CV & JD hoÃ n táº¥t!",
       });
     } catch (error) {
       dispatchNotice({
         tone: "danger",
-        title: "Lỗi",
-        message: error?.message || "Không thể phân tích. Vui lòng thử lại.",
+        title: "Lá»—i",
+        message: error?.message || "KhÃ´ng thá»ƒ phÃ¢n tÃ­ch. Vui lÃ²ng thá»­ láº¡i.",
       });
     } finally {
       setAnalyzing(false);
     }
   };
 
-  const userName = user?.name?.split(" ").pop() || "bạn";
+  const userName = user?.name?.split(" ").pop() || "báº¡n";
 
-  /* ─── Handlers: Detail Window ─── */
+  /* â”€â”€â”€ Handlers: Detail Window â”€â”€â”€ */
   const handleOpenCvDetail = async (doc) => {
     setSelectedCvForDetail(doc);
     setLoadingPreview(true);
@@ -349,23 +426,23 @@ const DashboardPage = () => {
       console.error("Failed to fetch preview URL:", error);
       dispatchNotice({
         tone: "danger",
-        title: "Lỗi xem trước",
-        message: "Không thể lấy đường dẫn xem trước tài liệu."
+        title: "Lá»—i xem trÆ°á»›c",
+        message: "KhÃ´ng thá»ƒ láº¥y Ä‘Æ°á»ng dáº«n xem trÆ°á»›c tÃ i liá»‡u."
       });
     } finally {
       setLoadingPreview(false);
     }
   };
 
-  /* ─── View A: Overview ─── */
+  /* â”€â”€â”€ View A: Overview â”€â”€â”€ */
   const renderOverview = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header className="mb-8">
         <h1 className="text-3xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight">
-          Tổng quan hiệu suất
+          Tá»•ng quan hiá»‡u suáº¥t
         </h1>
         <p className="mt-2 text-slate-600 dark:text-slate-400 text-lg">
-          Chào mừng trở lại, <span className="font-semibold text-indigo-600 dark:text-indigo-400">{userName}</span>! Dưới đây là tóm tắt hành trình của bạn.
+          ChÃ o má»«ng trá»Ÿ láº¡i, <span className="font-semibold text-indigo-600 dark:text-indigo-400">{userName}</span>! DÆ°á»›i Ä‘Ã¢y lÃ  tÃ³m táº¯t hÃ nh trÃ¬nh cá»§a báº¡n.
         </p>
       </header>
 
@@ -377,7 +454,7 @@ const DashboardPage = () => {
               <BarChart className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Tổng số lần phân tích</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Tá»•ng sá»‘ láº§n phÃ¢n tÃ­ch</p>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="text-3xl font-bold text-slate-900 dark:text-white">{stats.totalAnalyses}</span>
               </div>
@@ -389,7 +466,7 @@ const DashboardPage = () => {
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm hover:shadow-md transition duration-300">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Điểm phù hợp trung bình</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Äiá»ƒm phÃ¹ há»£p trung bÃ¬nh</p>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="text-3xl font-bold text-slate-900 dark:text-white">{stats.avgScore}%</span>
               </div>
@@ -405,7 +482,7 @@ const DashboardPage = () => {
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">CV đã được tối ưu</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">CV Ä‘Ã£ Ä‘Æ°á»£c tá»‘i Æ°u</p>
               <div className="flex items-baseline gap-2 mt-1">
                 <span className="text-3xl font-bold text-slate-900 dark:text-white">{stats.optimizedCvs}</span>
               </div>
@@ -419,45 +496,50 @@ const DashboardPage = () => {
         <div className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 px-6 py-5">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Clock className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
-            Hoạt động gần đây
+            Hoáº¡t Ä‘á»™ng gáº§n Ä‘Ã¢y
             <span className="ml-2 inline-flex items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-500/20 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
               {recentActivity.length}
             </span>
           </h3>
         </div>
         
-        {recentActivity.length > 0 ? (
+        {loadingHistory ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-3" />
+            <p className="text-sm text-slate-500 dark:text-slate-400">Dang tai lich su doi chieu...</p>
+          </div>
+        ) : recentActivity.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
               <thead className="bg-white dark:bg-slate-900">
                 <tr>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Vị trí ứng tuyển</th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tên CV đã dùng</th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Điểm phù hợp</th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Ngày phân tích</th>
-                  <th scope="col" className="relative px-6 py-4"><span className="sr-only">Hành động</span></th>
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Vá»‹ trÃ­ á»©ng tuyá»ƒn</th>
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">TÃªn CV Ä‘Ã£ dÃ¹ng</th>
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Äiá»ƒm phÃ¹ há»£p</th>
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">NgÃ y phÃ¢n tÃ­ch</th>
+                  <th scope="col" className="relative px-6 py-4"><span className="sr-only">HÃ nh Ä‘á»™ng</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
                 {recentActivity.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-900 dark:text-white">{row.jobTitle}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-900 dark:text-white">{row.jd_text_preview || "Vi tri tuyen dung"}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
                       <FileText className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                      {row.cvName}
+                      {row.cv_file_name}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border ${getScoreColorClass(row.score)}`}>
-                        {row.score}%
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border ${getScoreColorClass(Number(row.overall_score) || 0)}`}>
+                        {Math.round(Number(row.overall_score) || 0)}%
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{row.date}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{new Date(row.created_at).toLocaleString("vi-VN")}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                       <button
-                        onClick={() => navigate("/cv-screening-demo", { state: { reportId: row.id } })}
+                        onClick={() => handleViewReport(row.id)}
                         className="inline-flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 font-semibold transition-colors"
                       >
-                        Xem báo cáo
+                        Xem bÃ¡o cÃ¡o
                       </button>
                     </td>
                   </tr>
@@ -470,9 +552,9 @@ const DashboardPage = () => {
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
               <BarChart className="h-8 w-8" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Chưa có hoạt động nào</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">ChÆ°a cÃ³ hoáº¡t Ä‘á»™ng nÃ o</h3>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm">
-              Hãy chuyển sang thẻ "Phân tích mới" để bắt đầu đối chiếu CV với JD đầu tiên của bạn!
+              HÃ£y chuyá»ƒn sang tháº» "PhÃ¢n tÃ­ch má»›i" Ä‘á»ƒ báº¯t Ä‘áº§u Ä‘á»‘i chiáº¿u CV vá»›i JD Ä‘áº§u tiÃªn cá»§a báº¡n!
             </p>
           </div>
         )}
@@ -480,7 +562,7 @@ const DashboardPage = () => {
     </div>
   );
 
-  /* ─── View B: AI Workspace ─── */
+  /* â”€â”€â”€ View B: AI Workspace â”€â”€â”€ */
   const renderWorkspace = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <header className="mb-8">
@@ -488,7 +570,7 @@ const DashboardPage = () => {
           <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Workspace</span>
         </div>
-        <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Đối chiếu hồ sơ bằng AI</h2>
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Äá»‘i chiáº¿u há»“ sÆ¡ báº±ng AI</h2>
       </header>
 
       <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-10 shadow-xl shadow-slate-200/40 dark:shadow-none">
@@ -497,11 +579,11 @@ const DashboardPage = () => {
           <div className="flex flex-col h-full">
              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                <FileText className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
-               Hồ sơ của bạn (CV)
+               Há»“ sÆ¡ cá»§a báº¡n (CV)
              </h3>
              <UploadSlot
-               label="Hồ sơ năng lực"
-               hint="Chọn một bản CV từ thư viện hồ sơ của bạn để bắt đầu."
+               label="Há»“ sÆ¡ nÄƒng lá»±c"
+               hint="Chá»n má»™t báº£n CV tá»« thÆ° viá»‡n há»“ sÆ¡ cá»§a báº¡n Ä‘á»ƒ báº¯t Ä‘áº§u."
                icon={FileText}
                file={cvFile}
                onRemove={() => setCvFile(null)}
@@ -513,7 +595,7 @@ const DashboardPage = () => {
           <div className="flex flex-col h-full">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                <AlignLeft className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
-               Mô tả công việc (JD)
+               MÃ´ táº£ cÃ´ng viá»‡c (JD)
             </h3>
             <div className={`relative flex flex-col w-full h-full min-h-[280px] rounded-2xl border transition-all ${
               jdText.trim() 
@@ -523,14 +605,14 @@ const DashboardPage = () => {
               <textarea
                 value={jdText}
                 onChange={(e) => setJdText(e.target.value)}
-                placeholder="Dán nội dung mô tả công việc (Job Description) vào đây..."
+                placeholder="DÃ¡n ná»™i dung mÃ´ táº£ cÃ´ng viá»‡c (Job Description) vÃ o Ä‘Ã¢y..."
                 className="w-full h-full min-h-[280px] resize-none bg-transparent p-6 outline-none text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-2xl custom-scrollbar"
               ></textarea>
               {jdText.trim() && (
                 <button
                   className="absolute top-4 right-4 p-1.5 rounded-full bg-white dark:bg-slate-800 text-slate-400 shadow-sm border border-slate-200 dark:border-slate-700 hover:text-rose-500 dark:hover:text-rose-400 hover:border-rose-200 dark:hover:border-rose-500/30 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition z-10"
                   onClick={() => setJdText("")}
-                  title="Xóa nội dung"
+                  title="XÃ³a ná»™i dung"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -555,11 +637,11 @@ const DashboardPage = () => {
             )}
             
             {analyzing ? (
-              <span className="tracking-tight">Đang chuẩn bị kết quả...</span>
+              <span className="tracking-tight">Äang chuáº©n bá»‹ káº¿t quáº£...</span>
             ) : (
               <>
                 <Sparkles className={`h-7 w-7 ${(!cvFile || !jdText.trim()) ? "text-slate-400" : "text-indigo-200 group-hover:rotate-12 transition-transform"}`} />
-                <span className="tracking-tight">Phân tích độ phù hợp</span>
+                <span className="tracking-tight">PhÃ¢n tÃ­ch Ä‘á»™ phÃ¹ há»£p</span>
                 <ArrowRight className={`h-6 w-6 ml-1 transition-all group-hover:translate-x-2 ${(!cvFile || !jdText.trim()) ? "opacity-30" : ""}`} />
               </>
             )}
@@ -569,50 +651,55 @@ const DashboardPage = () => {
     </div>
   );
 
-  /* ─── View: History ─── */
+  /* â”€â”€â”€ View: History â”€â”€â”€ */
   const renderHistory = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header className="mb-8">
         <h1 className="text-3xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight">
-          Lịch sử đối chiếu
+          Lá»‹ch sá»­ Ä‘á»‘i chiáº¿u
         </h1>
         <p className="mt-2 text-slate-600 dark:text-slate-400 text-lg">
-          Xem lại toàn bộ các lượt phân tích và đánh giá CV của bạn trước đây.
+          Xem láº¡i toÃ n bá»™ cÃ¡c lÆ°á»£t phÃ¢n tÃ­ch vÃ  Ä‘Ã¡nh giÃ¡ CV cá»§a báº¡n trÆ°á»›c Ä‘Ã¢y.
         </p>
       </header>
       <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-        {recentActivity.length > 0 ? (
+        {loadingHistory ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-3" />
+            <p className="text-sm text-slate-500 dark:text-slate-400">Dang tai lich su doi chieu...</p>
+          </div>
+        ) : recentActivity.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
               <thead className="bg-white dark:bg-slate-900">
                 <tr>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Vị trí ứng tuyển</th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tên CV đã dùng</th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Điểm phù hợp</th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Ngày phân tích</th>
-                  <th scope="col" className="relative px-6 py-4"><span className="sr-only">Hành động</span></th>
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Vá»‹ trÃ­ á»©ng tuyá»ƒn</th>
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">TÃªn CV Ä‘Ã£ dÃ¹ng</th>
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Äiá»ƒm phÃ¹ há»£p</th>
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">NgÃ y phÃ¢n tÃ­ch</th>
+                  <th scope="col" className="relative px-6 py-4"><span className="sr-only">HÃ nh Ä‘á»™ng</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
                 {recentActivity.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-900 dark:text-white">{row.jobTitle}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-900 dark:text-white">{row.jd_text_preview || "Vi tri tuyen dung"}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
                       <FileText className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                      {row.cvName}
+                      {row.cv_file_name}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border ${getScoreColorClass(row.score)}`}>
-                        {row.score}%
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold border ${getScoreColorClass(Number(row.overall_score) || 0)}`}>
+                        {Math.round(Number(row.overall_score) || 0)}%
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{row.date}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{new Date(row.created_at).toLocaleString("vi-VN")}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                       <button
-                        onClick={() => navigate("/cv-screening-demo", { state: { reportId: row.id } })}
+                        onClick={() => handleViewReport(row.id)}
                         className="inline-flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 font-semibold transition-colors"
                       >
-                        Xem báo cáo
+                        Xem bÃ¡o cÃ¡o
                       </button>
                     </td>
                   </tr>
@@ -625,9 +712,9 @@ const DashboardPage = () => {
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
               <History className="h-8 w-8" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Chưa có lịch sử</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">ChÆ°a cÃ³ lá»‹ch sá»­</h3>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm">
-              Bạn chưa thực hiện bất kỳ phân tích nào.
+              Báº¡n chÆ°a thá»±c hiá»‡n báº¥t ká»³ phÃ¢n tÃ­ch nÃ o.
             </p>
           </div>
         )}
@@ -635,7 +722,7 @@ const DashboardPage = () => {
     </div>
   );
 
-  /* ─── View: Library (CVs & JDs) ─── */
+  /* â”€â”€â”€ View: Library (CVs & JDs) â”€â”€â”€ */
 
   const handleLibraryUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -643,7 +730,7 @@ const DashboardPage = () => {
 
     setIsUploading(true);
     try {
-      dispatchNotice({ tone: "info", title: "Đang tải lên", message: `Đang tải ${file.name} vào kho...` });
+      dispatchNotice({ tone: "info", title: "Äang táº£i lÃªn", message: `Äang táº£i ${file.name} vÃ o kho...` });
       if (libraryType === 'cv') {
         const newDoc = await uploadCvDocument({ file });
         if (newDoc) {
@@ -651,13 +738,13 @@ const DashboardPage = () => {
         }
       } else {
         // Simple JD upload mock for now as it needs more fields
-        dispatchNotice({ tone: "warning", title: "Thông báo", message: "Chức năng upload JD trực tiếp đang được hoàn thiện." });
+        dispatchNotice({ tone: "warning", title: "ThÃ´ng bÃ¡o", message: "Chá»©c nÄƒng upload JD trá»±c tiáº¿p Ä‘ang Ä‘Æ°á»£c hoÃ n thiá»‡n." });
         return;
       }
-      dispatchNotice({ tone: "success", title: "Thành công", message: "Đã thêm tài liệu vào kho hồ sơ." });
+      dispatchNotice({ tone: "success", title: "ThÃ nh cÃ´ng", message: "ÄÃ£ thÃªm tÃ i liá»‡u vÃ o kho há»“ sÆ¡." });
       loadLibrary(); // Refresh
     } catch (err) {
-      dispatchNotice({ tone: "danger", title: "Lỗi upload", message: err.message });
+      dispatchNotice({ tone: "danger", title: "Lá»—i upload", message: err.message });
     } finally {
       setIsUploading(false);
       e.target.value = "";
@@ -669,10 +756,10 @@ const DashboardPage = () => {
       {type !== 'modal' && (
         <header className="mb-8">
           <h1 className="text-3xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Kho hồ sơ (CV)
+            Kho há»“ sÆ¡ (CV)
           </h1>
           <p className="mt-2 text-slate-600 dark:text-slate-400 text-lg">
-            Quản lý danh sách các bản CV cá nhân của bạn.
+            Quáº£n lÃ½ danh sÃ¡ch cÃ¡c báº£n CV cÃ¡ nhÃ¢n cá»§a báº¡n.
           </p>
         </header>
       )}
@@ -684,7 +771,7 @@ const DashboardPage = () => {
               className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95 disabled:opacity-50"
             >
               {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
-              Tải lên hồ sơ mới
+              Táº£i lÃªn há»“ sÆ¡ má»›i
             </button>
             <input 
               ref={libraryInputRef}
@@ -699,7 +786,7 @@ const DashboardPage = () => {
         {loadingLibrary ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <Loader2 className="h-12 w-12 text-indigo-500 animate-spin" />
-            <p className="text-slate-500 dark:text-slate-400 font-medium">Đang truy xuất dữ liệu từ kho...</p>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">Äang truy xuáº¥t dá»¯ liá»‡u tá»« kho...</p>
           </div>
         ) : libraryDocuments.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -717,17 +804,17 @@ const DashboardPage = () => {
                     onClick={(e) => {
                       e.stopPropagation();
                       askConfirmation({
-                        title: "Xóa hồ sơ",
-                        message: `Bạn có chắc chắn muốn xóa hồ sơ "${doc.file_name}" khỏi kho lưu trữ? Hành động này không thể hoàn tác.`,
-                        confirmText: "Xóa ngay",
+                        title: "XÃ³a há»“ sÆ¡",
+                        message: `Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a há»“ sÆ¡ "${doc.file_name}" khá»i kho lÆ°u trá»¯? HÃ nh Ä‘á»™ng nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c.`,
+                        confirmText: "XÃ³a ngay",
                         tone: "danger",
                         onConfirm: async () => {
                           try {
                             await deleteDocument({ documentId: doc.id });
-                            dispatchNotice({ tone: "success", title: "Đã xóa", message: "Hồ sơ đã được loại bỏ khỏi kho." });
+                            dispatchNotice({ tone: "success", title: "ÄÃ£ xÃ³a", message: "Há»“ sÆ¡ Ä‘Ã£ Ä‘Æ°á»£c loáº¡i bá» khá»i kho." });
                             loadLibrary();
                           } catch (err) {
-                            dispatchNotice({ tone: "danger", title: "Lỗi xóa", message: err.message });
+                            dispatchNotice({ tone: "danger", title: "Lá»—i xÃ³a", message: err.message });
                           }
                         }
                       });
@@ -742,7 +829,7 @@ const DashboardPage = () => {
                   {doc.file_name}
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                  ID: #{doc.id} • PDF Document
+                  ID: #{doc.id} â€¢ PDF Document
                 </p>
                 
                 <div className="pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
@@ -758,31 +845,31 @@ const DashboardPage = () => {
             <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-50 dark:bg-slate-800 text-indigo-200 dark:text-indigo-900/50">
               <FileText className="h-10 w-10" />
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Thư viện trống</h3>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">ThÆ° viá»‡n trá»‘ng</h3>
             <p className="mt-3 text-lg text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-              Bạn chưa tải bất kỳ hồ sơ nào lên kho lưu trữ. Hãy bắt đầu bằng cách tải lên CV đầu tiên của bạn!
+              Báº¡n chÆ°a táº£i báº¥t ká»³ há»“ sÆ¡ nÃ o lÃªn kho lÆ°u trá»¯. HÃ£y báº¯t Ä‘áº§u báº±ng cÃ¡ch táº£i lÃªn CV Ä‘áº§u tiÃªn cá»§a báº¡n!
             </p>
             <button 
               onClick={() => libraryInputRef.current?.click()}
               className="mt-8 inline-flex items-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-95"
             >
               <Plus className="h-5 w-5" />
-              Tải hồ sơ đầu tiên
+              Táº£i há»“ sÆ¡ Ä‘áº§u tiÃªn
             </button>
           </div>
         )}
       </div>
   );
 
-  /* ─── View: Statistics ─── */
+  /* â”€â”€â”€ View: Statistics â”€â”€â”€ */
   const renderStatistics = () => {
     const chartData = [
-      { name: 'Thứ 2', value: 40 },
-      { name: 'Thứ 3', value: 30 },
-      { name: 'Thứ 4', value: 65 },
-      { name: 'Thứ 5', value: 45 },
-      { name: 'Thứ 6', value: 80 },
-      { name: 'Thứ 7', value: 55 },
+      { name: 'Thá»© 2', value: 40 },
+      { name: 'Thá»© 3', value: 30 },
+      { name: 'Thá»© 4', value: 65 },
+      { name: 'Thá»© 5', value: 45 },
+      { name: 'Thá»© 6', value: 80 },
+      { name: 'Thá»© 7', value: 55 },
       { name: 'CN', value: 90 },
     ];
 
@@ -790,16 +877,16 @@ const DashboardPage = () => {
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <header className="mb-8">
           <h1 className="text-3xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Thống kê phân tích
+            Thá»‘ng kÃª phÃ¢n tÃ­ch
           </h1>
           <p className="mt-1 text-slate-600 dark:text-slate-400">
-            Theo dõi hiệu suất và tần suất sử dụng AI của bạn.
+            Theo dÃµi hiá»‡u suáº¥t vÃ  táº§n suáº¥t sá»­ dá»¥ng AI cá»§a báº¡n.
           </p>
         </header>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-sm">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-indigo-500" /> Xu hướng phù hợp tuần này
+              <TrendingUp className="h-5 w-5 text-indigo-500" /> Xu hÆ°á»›ng phÃ¹ há»£p tuáº§n nÃ y
             </h3>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -825,16 +912,16 @@ const DashboardPage = () => {
           <div className="space-y-6">
             <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-indigo-600 p-8 text-white shadow-lg shadow-indigo-200 dark:shadow-none">
               <Sparkles className="h-10 w-10 mb-4 text-indigo-200" />
-              <h3 className="text-xl font-bold mb-2">Tối ưu hóa mạnh mẽ</h3>
+              <h3 className="text-xl font-bold mb-2">Tá»‘i Æ°u hÃ³a máº¡nh máº½</h3>
               <p className="text-indigo-100 text-sm leading-relaxed mb-6">
-                Tiếp tục thực hiện các lượt phân tích để AI có thêm dữ liệu đưa ra các gợi ý tối ưu chính xác nhất cho bạn.
+                Tiáº¿p tá»¥c thá»±c hiá»‡n cÃ¡c lÆ°á»£t phÃ¢n tÃ­ch Ä‘á»ƒ AI cÃ³ thÃªm dá»¯ liá»‡u Ä‘Æ°a ra cÃ¡c gá»£i Ã½ tá»‘i Æ°u chÃ­nh xÃ¡c nháº¥t cho báº¡n.
               </p>
             </div>
 
             <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Hành trình của bạn</span>
-                <span className="text-sm font-black text-indigo-600">Bắt đầu</span>
+                <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">HÃ nh trÃ¬nh cá»§a báº¡n</span>
+                <span className="text-sm font-black text-indigo-600">Báº¯t Ä‘áº§u</span>
               </div>
               <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                 <div className="h-full bg-indigo-600 rounded-full" style={{ width: '10%' }} />
@@ -846,7 +933,7 @@ const DashboardPage = () => {
     );
   };
 
-  /* ─── Render Routing Logic ─── */
+  /* â”€â”€â”€ Render Routing Logic â”€â”€â”€ */
   const renderContent = () => {
     switch (currentScreen) {
       case "newAnalysis":
@@ -900,8 +987,8 @@ const DashboardPage = () => {
                   <FolderOpen className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Chọn từ thư viện</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Danh sách CV bạn đã tải lên trước đó</p>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">Chá»n tá»« thÆ° viá»‡n</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Danh sÃ¡ch CV báº¡n Ä‘Ã£ táº£i lÃªn trÆ°á»›c Ä‘Ã³</p>
                 </div>
               </div>
               <button 
@@ -916,7 +1003,7 @@ const DashboardPage = () => {
               {loadingLibrary ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4">
                   <Loader2 className="h-10 w-10 text-indigo-500 animate-spin" />
-                  <p className="text-slate-500 dark:text-slate-400 font-medium">Đang tải tài liệu...</p>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium">Äang táº£i tÃ i liá»‡u...</p>
                 </div>
               ) : libraryDocuments.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3">
@@ -938,7 +1025,7 @@ const DashboardPage = () => {
                             {doc.file_name}
                           </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            ID: #{doc.id} • Tải lên ngày {new Date(doc.created_at).toLocaleDateString('vi-VN')}
+                            ID: #{doc.id} â€¢ Táº£i lÃªn ngÃ y {new Date(doc.created_at).toLocaleDateString('vi-VN')}
                           </p>
                         </div>
                       </div>
@@ -953,9 +1040,9 @@ const DashboardPage = () => {
                   <div className="h-16 w-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300 dark:text-slate-600 mb-4">
                     <FileText className="h-8 w-8" />
                   </div>
-                  <h4 className="text-lg font-bold text-slate-900 dark:text-white">Chưa có tài liệu nào</h4>
+                  <h4 className="text-lg font-bold text-slate-900 dark:text-white">ChÆ°a cÃ³ tÃ i liá»‡u nÃ o</h4>
                   <p className="text-slate-500 dark:text-slate-400 max-w-[280px] mt-2">
-                    Bạn chưa có CV nào trong kho. Hãy tải file mới để lưu trữ vào thư viện.
+                    Báº¡n chÆ°a cÃ³ CV nÃ o trong kho. HÃ£y táº£i file má»›i Ä‘á»ƒ lÆ°u trá»¯ vÃ o thÆ° viá»‡n.
                   </p>
                 </div>
               )}
@@ -966,7 +1053,7 @@ const DashboardPage = () => {
                 onClick={() => setIsLibraryModalOpen(false)}
                 className="px-6 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
               >
-                Đóng
+                ÄÃ³ng
               </button>
             </footer>
           </div>
@@ -982,3 +1069,5 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
+
+

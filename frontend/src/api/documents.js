@@ -185,3 +185,38 @@ export async function matchCvWithJdText({ cvDocumentId, jdText }) {
   });
   return parseApiResponse(response);
 }
+
+export async function fetchMatchHistory({ limit = 20, offset = 0 } = {}) {
+  const token = getAuthTokenOrThrow();
+  const query = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const response = await authFetch(
+    `${API_BASE_URL}/v1_0/document/match-history?${query.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+  return parseApiResponse(response);
+}
+
+export async function fetchMatchHistoryDetail({ analysisId }) {
+  if (!analysisId) {
+    throw new Error("analysisId is required.");
+  }
+  const token = getAuthTokenOrThrow();
+  const response = await authFetch(
+    `${API_BASE_URL}/v1_0/document/match-history/${analysisId}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+  return parseApiResponse(response);
+}

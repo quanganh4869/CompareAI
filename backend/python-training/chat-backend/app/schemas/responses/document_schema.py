@@ -88,3 +88,32 @@ class DocumentMatchScoreResponse(BaseModel):
     skill_gap: DocumentSkillGap
     deep_experience_alignment: list[DocumentExperienceAlignment]
     actionable_recommendations: list[DocumentActionableRecommendation]
+
+
+class DocumentMatchHistoryItemResponse(BaseModel):
+    id: int
+    cv_document_id: int
+    cv_file_name: str
+    cv_metadata_json: Dict[str, Any] = {}
+    overall_score: float
+    jd_text_preview: str | None = None
+    created_at: datetime
+
+
+class DocumentMatchHistoryListResponse(BaseModel):
+    items: list[DocumentMatchHistoryItemResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class DocumentMatchDetailResponse(BaseModel):
+    id: int
+    cv_document_id: int
+    cv_file_name: str
+    cv_metadata_json: Dict[str, Any] = {}
+    jd_document_id: int | None = None
+    jd_text: str | None = None
+    overall_score: float
+    created_at: datetime
+    result: DocumentMatchScoreResponse

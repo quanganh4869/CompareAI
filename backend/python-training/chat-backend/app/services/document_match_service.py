@@ -6,11 +6,13 @@ from configuration.logger.config import log
 from configuration.settings import configuration
 from core.exception_handler.custom_exception import ExceptionValueError
 from db.models.analysis_result import AnalysisResult
+from db.models.document import Document
 from db.models.users import User
 from services.cv_parser_service import CvParserService
 from services.document_service import DocumentService
 from services.providers.embedding_provider import embedding_provider
 from sklearn.metrics.pairwise import cosine_similarity
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 TECH_STACK_LIBRARY = [
@@ -188,6 +190,105 @@ class DocumentMatchService:
             )
 
         return result
+
+    async def list_match_history(
+        self,
+        *,
+        user: User,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        capped_limit = max(1, min(int(limit), 100))
+        safe_offset = max(0, int(offset))
+
+        total_query = select(func.count(AnalysisResult.id)).where(
+            AnalysisResult.user_id == user.id
+        )
+        total = (await self.db_session.execute(total_query)).scalar_one() or 0
+
+        query = (
+            select(AnalysisResult, Document.file_name, Document.metadata_json)
+            .join(Document, Document.id == AnalysisResult.cv_id)
+            .where(AnalysisResult.user_id == user.id)
+            .order_by(AnalysisResult.created_at.desc())
+            .limit(capped_limit)
+            .offset(safe_offset)
+        )
+        rows = (await self.db_session.execute(query)).all()
+
+        items: list[dict[str, Any]] = []
+        for analysis, cv_file_name, cv_metadata_json in rows:
+            jd_text = str(analysis.jd_text or "").strip()
+            items.append(
+                {
+                    "id": analysis.id,
+                    "cv_document_id": analysis.cv_id,
+                    "cv_file_name": cv_file_name or f"CV #{analysis.cv_id}",
+                    "cv_metadata_json": cv_metadata_json or {},
+                    "overall_score": float(analysis.overall_score or 0),
+                    "jd_text_preview": jd_text[:160] if jd_text else None,
+                    "created_at": analysis.created_at,
+                }
+            )
+
+        return {
+            "items": items,
+            "total": int(total),
+            "limit": capped_limit,
+            "offset": safe_offset,
+        }
+
+    async def get_match_history_detail(
+        self,
+        *,
+        user: User,
+        analysis_id: int,
+    ) -> dict[str, Any]:
+        query = (
+            select(AnalysisResult, Document.file_name, Document.metadata_json)
+            .join(Document, Document.id == AnalysisResult.cv_id)
+            .where(
+                AnalysisResult.id == analysis_id,
+                AnalysisResult.user_id == user.id,
+            )
+        )
+        row = (await self.db_session.execute(query)).first()
+        if not row:
+            raise ExceptionValueError(
+                message="Match history record not found.",
+                status_code=404,
+            )
+
+        analysis, cv_file_name, cv_metadata_json = row
+        raw_result = analysis.result_json or {}
+
+        result_payload = {
+            "overall_score": float(raw_result.get("overall_score", analysis.overall_score or 0)),
+            "executive_summary": str(raw_result.get("executive_summary", "")),
+            "skill_gap": raw_result.get(
+                "skill_gap",
+                {
+                    "matched_hard_skills": [],
+                    "missing_hard_skills": [],
+                    "matched_soft_skills": [],
+                    "missing_soft_skills": [],
+                },
+            ),
+            "deep_experience_alignment": raw_result.get("deep_experience_alignment", []),
+            "actionable_recommendations": raw_result.get("actionable_recommendations", []),
+        }
+
+        return {
+            "id": analysis.id,
+            "cv_document_id": analysis.cv_id,
+            "cv_file_name": cv_file_name or f"CV #{analysis.cv_id}",
+            "cv_metadata_json": cv_metadata_json or {},
+            "jd_document_id": analysis.jd_id,
+            "jd_text": analysis.jd_text,
+            "overall_score": float(analysis.overall_score or 0),
+            "created_at": analysis.created_at,
+            "result": result_payload,
+        }
 
     @staticmethod
     def _is_ocr_unavailable_error(message: str) -> bool:
