@@ -131,6 +131,9 @@ class Settings(BaseSettings):
         },
     }
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 14
+    COOKIE_SECURE: bool = False
+    COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
 
     TOKEN_EXCLUDE_URLS: list[str] = [
         "/docs",
@@ -141,6 +144,8 @@ class Settings(BaseSettings):
         "/v1_0/auth/google/login",
         "/v1_0/auth/login/google/callback",
         "/v1_0/auth/login/google",
+        "/v1_0/auth/refresh",
+        "/v1_0/auth/logout",
         "/v1_0/document/local-access",
     ]
 

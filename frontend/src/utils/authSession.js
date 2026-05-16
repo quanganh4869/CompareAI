@@ -1,5 +1,4 @@
 const ACCESS_TOKEN_KEY = "aiia_access_token";
-const REFRESH_TOKEN_KEY = "aiia_refresh_token";
 const USER_PROFILE_KEY = "aiia_user_profile";
 const ONBOARDING_DONE_KEY = "aiia_onboarding_done";
 const USER_ROLE_KEY = "aiia_user_role";
@@ -14,20 +13,14 @@ export function normalizeUserRole(role) {
   return "";
 }
 
-export function saveAuthSession({ accessToken, refreshToken }) {
+export function saveAuthSession({ accessToken }) {
   if (typeof window === "undefined") return;
   if (accessToken) window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  if (refreshToken) window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 }
 
 export function getAccessToken() {
   if (typeof window === "undefined") return "";
   return window.localStorage.getItem(ACCESS_TOKEN_KEY) || "";
-}
-
-export function getRefreshToken() {
-  if (typeof window === "undefined") return "";
-  return window.localStorage.getItem(REFRESH_TOKEN_KEY) || "";
 }
 
 export function saveAuthUser(user) {
@@ -88,7 +81,8 @@ export function getUserRole() {
 export function clearAuthSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+  // Cleanup legacy refresh token key from previous storage strategy.
+  window.localStorage.removeItem("aiia_refresh_token");
   window.localStorage.removeItem(USER_PROFILE_KEY);
   window.localStorage.removeItem(ONBOARDING_DONE_KEY);
   window.localStorage.removeItem(USER_ROLE_KEY);

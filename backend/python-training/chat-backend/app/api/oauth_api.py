@@ -8,7 +8,7 @@ from core.decorators.log_time import measure_time
 from core.exception_handler.custom_exception import ExceptionValueError
 from core.messages import CustomMessageCode
 from db.db_connection import Database
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from schemas.requests.google_auth_schema import GoogleLoginRequest, RefreshTokenRequest
 from services.google_auth_service import GoogleAuthService
 from services.key_manager_service import KeyManager
@@ -17,6 +17,35 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import RedirectResponse
 
 router = APIRouter()
+REFRESH_COOKIE_NAME = "refresh_token"
+REFRESH_COOKIE_PATH = "/v1_0/auth"
+
+
+def _should_use_secure_cookie() -> bool:
+    if configuration.ENVIRONMENT in {"production", "staging"}:
+        return True
+    return configuration.COOKIE_SECURE
+
+
+def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    response.set_cookie(
+        key=REFRESH_COOKIE_NAME,
+        value=refresh_token,
+        httponly=True,
+        secure=_should_use_secure_cookie(),
+        samesite=configuration.COOKIE_SAMESITE,
+        path=REFRESH_COOKIE_PATH,
+        max_age=configuration.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=REFRESH_COOKIE_NAME,
+        path=REFRESH_COOKIE_PATH,
+        samesite=configuration.COOKIE_SAMESITE,
+        secure=_should_use_secure_cookie(),
+    )
 
 
 @router.get("/jwks")
@@ -65,11 +94,12 @@ async def google_login_callback(
         redirect_url = (
             f"{configuration.FRONTEND_URL}/google-callback#"
             f"access_token={login_result.access_token}"
-            f"&refresh_token={login_result.refresh_token}"
             f"&token_type=bearer"
             f"&expires_in={login_result.expires_in}"
         )
-        return RedirectResponse(url=redirect_url)
+        response = RedirectResponse(url=redirect_url)
+        _set_refresh_cookie(response, login_result.refresh_token)
+        return response
 
     except ExceptionValueError as e:
         log.error(f"Google callback business error: {e.message}")
@@ -103,9 +133,11 @@ async def login_google(
             token=request_data.id_token,
         )
 
-        return ApiResponse.success(
+        response = ApiResponse.success(
             data=result.model_dump(),
         )
+        _set_refresh_cookie(response, result.refresh_token)
+        return response
 
     except ValueError as e:
         log.error(f"Invalid Google token in login_google: {e}")
@@ -128,17 +160,23 @@ async def login_google(
 @api_version(1, 0)
 @measure_time
 async def refresh_token(
-    request_data: RefreshTokenRequest,
+    request: Request,
     db_session: Annotated[AsyncSession, Depends(Database.get_async_db_session)],
+    request_data: RefreshTokenRequest | None = None,
 ):
     """Refresh access token from refresh token."""
     try:
+        refresh_token_value = request.cookies.get(REFRESH_COOKIE_NAME) or (
+            request_data.refresh_token if request_data else ""
+        )
         auth_service = UserAuthService(db_session=db_session)
         async with db_session.begin():
             result = await auth_service.refresh_access_token(
-                refresh_token=request_data.refresh_token
+                refresh_token=refresh_token_value
             )
-        return ApiResponse.success(data=result.model_dump())
+        response = ApiResponse.success(data=result.model_dump())
+        _set_refresh_cookie(response, result.refresh_token)
+        return response
     except ValueError as e:
         return ApiResponse.error(
             message=str(e) or "Invalid refresh token.",
@@ -150,3 +188,38 @@ async def refresh_token(
             message=CustomMessageCode.UNKNOWN_ERROR.title,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@router.post("/logout")
+@api_version(1, 0)
+@measure_time
+async def logout(
+    request: Request,
+    db_session: Annotated[AsyncSession, Depends(Database.get_async_db_session)],
+):
+    """Revoke current refresh/access token and clear refresh cookie."""
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        _, _, access_token = auth_header.partition("Bearer ")
+        refresh_token_value = request.cookies.get(REFRESH_COOKIE_NAME, "")
+
+        auth_service = UserAuthService(db_session=db_session)
+        async with db_session.begin():
+            revoked_refresh = await auth_service.revoke_by_refresh_token(
+                refresh_token_value
+            )
+            revoked_access = await auth_service.revoke_by_access_token(access_token)
+
+        response = ApiResponse.success(
+            data={"revoked": bool(revoked_refresh or revoked_access)}
+        )
+        _clear_refresh_cookie(response)
+        return response
+    except Exception as e:
+        log.error(f"Failed to logout: {e}")
+        response = ApiResponse.error(
+            message=CustomMessageCode.UNKNOWN_ERROR.title,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+        _clear_refresh_cookie(response)
+        return response

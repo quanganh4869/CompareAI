@@ -2,7 +2,6 @@ import { API_BASE_URL } from "../config/api";
 import {
   clearAuthSession,
   getAccessToken,
-  getRefreshToken,
   saveAuthSession,
   syncUserSessionFromBackend,
 } from "./authSession";
@@ -17,15 +16,9 @@ function redirectToLanding() {
 }
 
 async function refreshAccessToken() {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    throw new Error("Missing refresh token.");
-  }
-
   const response = await fetch(`${API_BASE_URL}/v1_0/auth/refresh`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refreshToken }),
+    credentials: "include",
   });
   const body = await response.json().catch(() => null);
   if (!response.ok || !body?.success || !body?.data?.access_token) {
@@ -33,11 +26,7 @@ async function refreshAccessToken() {
   }
 
   const nextAccessToken = body.data.access_token;
-  const nextRefreshToken = body.data.refresh_token || refreshToken;
-  saveAuthSession({
-    accessToken: nextAccessToken,
-    refreshToken: nextRefreshToken,
-  });
+  saveAuthSession({ accessToken: nextAccessToken });
   if (body?.data?.user) {
     syncUserSessionFromBackend(body.data.user);
   }
@@ -61,8 +50,8 @@ function withAuthHeader(options = {}, accessToken) {
 
 function isUnauthorized(body, status) {
   if (status !== 401) return false;
-  const code = body?.messageCode;
-  return code === 4413 || true;
+  const code = body?.messageCode ?? body?.msg_code;
+  return code === 4413;
 }
 
 export async function authFetch(url, options = {}, { retryOn401 = true } = {}) {
@@ -86,4 +75,3 @@ export async function authFetch(url, options = {}, { retryOn401 = true } = {}) {
   }
   return response;
 }
-

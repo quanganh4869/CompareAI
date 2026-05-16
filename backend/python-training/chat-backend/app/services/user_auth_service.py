@@ -131,6 +131,38 @@ class UserAuthService:
             log.error(f"Failed to refresh access token: {e}")
             raise
 
+    async def revoke_by_access_token(self, access_token: str) -> bool:
+        access_token = str(access_token or "").strip()
+        if not access_token:
+            return False
+
+        result = await self.db_session.execute(
+            select(OAuthToken).where(OAuthToken.access_token == access_token)
+        )
+        existing_token = result.scalar_one_or_none()
+        if not existing_token:
+            return False
+
+        await self.db_session.delete(existing_token)
+        await self.db_session.flush()
+        return True
+
+    async def revoke_by_refresh_token(self, refresh_token: str) -> bool:
+        refresh_token = str(refresh_token or "").strip()
+        if not refresh_token:
+            return False
+
+        result = await self.db_session.execute(
+            select(OAuthToken).where(OAuthToken.refresh_token == refresh_token)
+        )
+        existing_token = result.scalar_one_or_none()
+        if not existing_token:
+            return False
+
+        await self.db_session.delete(existing_token)
+        await self.db_session.flush()
+        return True
+
     async def _get_identity(self, provider_user_id: str) -> AuthIdentity | None:
         result = await self.db_session.execute(
             select(AuthIdentity)

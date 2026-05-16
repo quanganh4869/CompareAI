@@ -62,10 +62,24 @@ export const UserProvider = ({ children }) => {
     setUser(null);
   }, []);
 
+  const revokeServerSession = useCallback(async () => {
+    const token = getAccessToken();
+    try {
+      await fetch(`${API_BASE_URL}/v1_0/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    } catch {
+      // Best effort revoke only.
+    }
+  }, []);
+
   const logout = useCallback(() => {
+    void revokeServerSession();
     logoutSilent();
     window.location.href = "/";
-  }, [logoutSilent]);
+  }, [logoutSilent, revokeServerSession]);
 
   useEffect(() => {
     if (getAccessToken()) {
