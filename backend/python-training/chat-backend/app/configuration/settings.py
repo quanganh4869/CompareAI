@@ -136,6 +136,7 @@ class Settings(BaseSettings):
     COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
 
     TOKEN_EXCLUDE_URLS: list[str] = [
+        "/",
         "/docs",
         "/openapi.json",
         "/favicon.ico",
