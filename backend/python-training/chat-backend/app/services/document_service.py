@@ -168,6 +168,22 @@ class DocumentService:
                 message="Uploaded file is not found in storage."
             )
 
+    def _normalize_legacy_local_key_for_object_storage(
+        self, storage_key: str
+    ) -> str | None:
+        """
+        Convert legacy local-style keys like `uploads/cv/<file>` to object-storage
+        style keys `cv/<file>`.
+        """
+        raw_key = str(storage_key or "").replace("\\", "/").strip().strip("/")
+        if not raw_key:
+            return None
+
+        upload_root = str(configuration.UPLOAD_DIR or "").replace("\\", "/").strip("/")
+        if upload_root and raw_key.startswith(f"{upload_root}/"):
+            return raw_key[len(upload_root) + 1 :]
+        return None
+
     @staticmethod
     def _build_cv_metadata(target_role: str | None) -> dict[str, Any]:
         return {"target_role": target_role}
@@ -342,6 +358,75 @@ class DocumentService:
                 )
             return visible_documents
 
+        # Object storage mode: hide stale records and auto-normalize legacy local keys
+        # where possible (`uploads/cv/...` -> `cv/...`).
+        visible_documents: list[Document] = []
+        orphan_ids: list[int] = []
+        has_updates = False
+        for document in documents:
+            key = str(document.storage_key or "").strip()
+            exists = False
+            try:
+                exists = await self.storage_service.object_exists(key)
+            except Exception as exc:
+                log.error(
+                    "object_exists_failed user_id=%s document_id=%s key=%s error=%s",
+                    user.id,
+                    document.id,
+                    key,
+                    str(exc),
+                )
+
+            if not exists:
+                migrated_key = self._normalize_legacy_local_key_for_object_storage(key)
+                if migrated_key and migrated_key != key:
+                    try:
+                        migrated_exists = await self.storage_service.object_exists(
+                            migrated_key
+                        )
+                    except Exception as exc:
+                        migrated_exists = False
+                        log.error(
+                            "object_exists_migrated_key_failed user_id=%s document_id=%s key=%s error=%s",
+                            user.id,
+                            document.id,
+                            migrated_key,
+                            str(exc),
+                        )
+                    if migrated_exists:
+                        document.storage_key = migrated_key
+                        self.db_session.add(document)
+                        has_updates = True
+                        exists = True
+                        log.warning(
+                            "legacy_storage_key_migrated user_id=%s document_id=%s old_key=%s new_key=%s",
+                            user.id,
+                            document.id,
+                            key,
+                            migrated_key,
+                        )
+
+            if exists:
+                visible_documents.append(document)
+            else:
+                orphan_ids.append(document.id)
+
+        if has_updates:
+            try:
+                await self.db_session.commit()
+            except Exception as exc:
+                await self.db_session.rollback()
+                log.error("legacy_storage_key_migration_commit_failed error=%s", str(exc))
+
+        if orphan_ids:
+            log.warning(
+                "object_storage_orphan_documents_hidden user_id=%s orphan_ids=%s",
+                user.id,
+                orphan_ids,
+            )
+
+        return visible_documents
+
         return documents
 
     async def create_access_url(
@@ -372,9 +457,21 @@ class DocumentService:
 
         ttl = expires_in or configuration.STORAGE_PRESIGNED_GET_EXPIRES_SECONDS
         if self.storage_service.supports_presigned_download:
-            await self._ensure_object_exists(document.storage_key)
+            key = str(document.storage_key or "").strip()
+            try:
+                await self._ensure_object_exists(key)
+            except ExceptionValueError:
+                migrated_key = self._normalize_legacy_local_key_for_object_storage(key)
+                if migrated_key and migrated_key != key:
+                    await self._ensure_object_exists(migrated_key)
+                    document.storage_key = migrated_key
+                    self.db_session.add(document)
+                    await self.db_session.commit()
+                    key = migrated_key
+                else:
+                    raise
             response = await self.storage_service.create_presigned_download(
-                object_key=document.storage_key,
+                object_key=key,
                 expires_seconds=ttl,
             )
         else:
