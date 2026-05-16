@@ -52,6 +52,25 @@ def test_calculate_match_weight_formula():
     assert "skill_gap" in result
     assert "deep_experience_alignment" in result
     assert "actionable_recommendations" in result
+    assert result["skill_gap"]["matched_soft_skills"] == []
+    assert result["skill_gap"]["missing_soft_skills"] == []
+    assert "du an" in result["executive_summary"].lower() or "project" in result["executive_summary"].lower()
+    assert len(result["deep_experience_alignment"]) >= 3
+
+
+@pytest.mark.unit
+def test_calculate_match_not_default_high_when_jd_has_no_skills_or_years():
+    service = DocumentMatchService.__new__(DocumentMatchService)
+    service.embedding_service = FakeEmbeddingProvider()
+
+    result = service._calculate_match(
+        cv_text="Junior tester with basic office tools",
+        jd_text="Need a motivated candidate",
+    )
+
+    # Guard against old behavior where score was inflated by default constants.
+    assert result["overall_score"] < 70
+    assert result["actionable_recommendations"][0]["cv_rewrite_example"]
 
 
 @pytest.mark.anyio

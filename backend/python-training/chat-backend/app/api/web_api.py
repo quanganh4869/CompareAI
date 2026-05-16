@@ -1,40 +1,79 @@
-from fastapi import APIRouter, Request, Form, UploadFile, File, Depends
+from pathlib import Path
+
+from core.exception_handler.custom_exception import ExceptionValueError
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from pathlib import Path
 from services.document_match_service import DocumentMatchService
-from services.document_service import DocumentService
-from db.db_connection import Database
-from sqlalchemy.ext.asyncio import AsyncSession
-from core.api_version_router import VersionedAPIRouter
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
 
+
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request, "active_page": "dashboard"})
+    return templates.TemplateResponse(
+        "dashboard.html", {"request": request, "active_page": "dashboard"}
+    )
+
 
 @router.post("/analyze", response_class=HTMLResponse)
 async def analyze(
-    request: Request, 
-    cv_file: UploadFile = File(None), 
+    request: Request,
+    cv_file: UploadFile = File(None),
     jd_text: str = Form(...),
 ):
-    # This is a simplified version of the analysis flow for the SSR demo
-    # In a real scenario, we'd use the services to process the file and text
-    
-    # Mock data for demonstration as requested by the user for the "Upgrade"
-    # Normally we'd call document_match_service here
-    
-    match_service = DocumentMatchService(None) # Session not needed for current logic
-    
-    # Simulate a result based on the new schema
-    result = match_service._calculate_match(cv_text="Python Senior Backend", jd_text=jd_text)
-    
-    return templates.TemplateResponse("report.html", {
-        "request": request, 
-        "result": result,
-        "candidate_name": cv_file.filename if cv_file else "Ứng viên Tiềm năng",
-        "active_page": "dashboard"
-    })
+    match_service = DocumentMatchService(None)
+
+    if not cv_file:
+        return templates.TemplateResponse(
+            "report.html",
+            {
+                "request": request,
+                "result": {
+                    "overall_score": 0,
+                    "executive_summary": "Vui long tai len CV de he thong phan tich.",
+                    "skill_gap": {
+                        "matched_hard_skills": [],
+                        "missing_hard_skills": [],
+                        "matched_soft_skills": [],
+                        "missing_soft_skills": [],
+                    },
+                    "deep_experience_alignment": [],
+                    "actionable_recommendations": [],
+                },
+                "candidate_name": "Ung vien",
+                "active_page": "dashboard",
+            },
+        )
+
+    try:
+        file_bytes = await cv_file.read()
+        cv_file.file.seek(0)
+        _, extracted_text, _, _, _ = (
+            match_service.cv_parser_service._extract_text_from_pdf(file_bytes)
+        )
+        cv_text = (extracted_text or "").strip()
+    except Exception as exc:
+        raise ExceptionValueError(
+            message=f"Khong the doc CV: {exc}",
+            status_code=422,
+        ) from exc
+
+    if not cv_text:
+        raise ExceptionValueError(
+            message=f"Khong the trich xuat noi dung CV tu file {cv_file.filename}.",
+            status_code=422,
+        )
+
+    result = match_service._calculate_match(cv_text=cv_text, jd_text=jd_text)
+
+    return templates.TemplateResponse(
+        "report.html",
+        {
+            "request": request,
+            "result": result,
+            "candidate_name": cv_file.filename if cv_file else "Ung vien",
+            "active_page": "dashboard",
+        },
+    )

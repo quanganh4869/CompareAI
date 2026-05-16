@@ -5,8 +5,8 @@ from typing import Any
 from configuration.logger.config import log
 from configuration.settings import configuration
 from core.exception_handler.custom_exception import ExceptionValueError
-from db.models.users import User
 from db.models.analysis_result import AnalysisResult
+from db.models.users import User
 from services.cv_parser_service import CvParserService
 from services.document_service import DocumentService
 from services.providers.embedding_provider import embedding_provider
@@ -72,7 +72,7 @@ TECH_STACK_LIBRARY = [
 ]
 
 YEARS_PATTERNS = [
-    r"(\d+)\s*\+?\s*(?:năm|year|years)\b",
+    r"(\d+)\s*\+?\s*(?:nam|year|years)\b",
     r"(?:exp|experience)\D*(\d+)",
 ]
 
@@ -170,18 +170,22 @@ class DocumentMatchService:
             "fallback_used": fallback_used,
             "fallback_reason": fallback_reason,
         }
-        # Save to database
+
         if self.db_session:
             new_result = AnalysisResult(
                 user_id=user.id,
                 cv_id=cv_document_id,
                 jd_text=jd_text,
                 overall_score=result["overall_score"],
-                result_json=result
+                result_json=result,
             )
             self.db_session.add(new_result)
             await self.db_session.commit()
-            log.info(f"Saved analysis result for user {user.id} and CV {cv_document_id}")
+            log.info(
+                "Saved analysis result for user %s and CV %s",
+                user.id,
+                cv_document_id,
+            )
 
         return result
 
@@ -216,11 +220,11 @@ class DocumentMatchService:
         cv_skills = extract_skills(cv_text)
         matched_skills = [skill for skill in jd_skills if skill in cv_skills]
         missing_skills = [skill for skill in jd_skills if skill not in cv_skills]
-        skill_score = len(matched_skills) / len(jd_skills) if jd_skills else 1.0
+        skill_score = len(matched_skills) / len(jd_skills) if jd_skills else 0.0
 
         cv_exp = extract_years_from_text(cv_text)
         jd_exp = extract_years_from_text(jd_text)
-        exp_score = 1.0
+        exp_score = 0.0
         if jd_exp > 0:
             exp_score = min(cv_exp / jd_exp, 1.2)
 
@@ -231,36 +235,42 @@ class DocumentMatchService:
         )
         match_score = round(_clamp(weighted, 0.0, 1.0) * 100, 2)
 
-        recommendation = "Reject"
-        if match_score >= 75:
-            recommendation = "Shortlist"
-        elif match_score >= 50:
-            recommendation = "Consider"
+        project_examples = self._extract_project_examples(cv_text)
+        project_example = self._pick_project_example(
+            project_examples=project_examples,
+            matched_skills=matched_skills,
+            missing_skills=missing_skills,
+            jd_skills=jd_skills,
+        )
 
         return {
             "overall_score": match_score,
-            "executive_summary": self._generate_executive_summary(match_score, matched_skills, cv_exp, jd_exp),
+            "executive_summary": self._generate_executive_summary(
+                score=match_score,
+                matched_skills=matched_skills,
+                cv_exp=cv_exp,
+                jd_exp=jd_exp,
+                project_example=project_example,
+            ),
             "skill_gap": {
                 "matched_hard_skills": matched_skills[:5],
                 "missing_hard_skills": missing_skills[:5],
-                "matched_soft_skills": ["Agile", "Teamwork"], # Simplified for demo
-                "missing_soft_skills": ["Communication"]
+                "matched_soft_skills": [],
+                "missing_soft_skills": [],
             },
-            "deep_experience_alignment": [
-                {
-                    "requirement": f"Yêu cầu {jd_exp} năm kinh nghiệm thực tế.",
-                    "candidate_reality": f"Ứng viên có {cv_exp} năm kinh nghiệm.",
-                    "severity": "High" if cv_exp < jd_exp else "Low",
-                    "hr_comment": "Kinh nghiệm thực tế " + ("chưa đáp ứng được bài toán scale hệ thống." if cv_exp < jd_exp else "phù hợp với yêu cầu vị trí.")
-                }
-            ],
-            "actionable_recommendations": [
-                {
-                    "issue": "Thiếu keyword về DevOps (Docker, CI/CD) trong các dự án thực tế." if "docker" in missing_skills else "Cần làm rõ hơn về vai trò trong các dự án lớn.",
-                    "solution": "Đừng chỉ liệt kê kỹ năng ở mục Kỹ năng. Hãy lồng ghép nó vào phần Kinh nghiệm làm việc hoặc Dự án cá nhân.",
-                    "cv_rewrite_example": "Nên viết: 'Thiết kế RESTful API bằng FastAPI và đóng gói (containerize) ứng dụng bằng Docker' thay vì 'Làm backend API'."
-                }
-            ]
+            "deep_experience_alignment": self._build_deep_experience_alignment(
+                cv_exp=cv_exp,
+                jd_exp=jd_exp,
+                matched_skills=matched_skills,
+                missing_skills=missing_skills,
+                project_example=project_example,
+            ),
+            "actionable_recommendations": self._build_actionable_recommendations(
+                matched_skills=matched_skills,
+                missing_skills=missing_skills,
+                jd_skills=jd_skills,
+                project_example=project_example,
+            ),
         }
 
     def _calculate_semantic_score(self, cv_clean: str, jd_clean: str) -> float:
@@ -269,9 +279,7 @@ class DocumentMatchService:
 
         try:
             embeddings = self.embedding_service.encode([cv_clean, jd_clean])
-            semantic_raw = float(
-                cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
-            )
+            semantic_raw = float(cosine_similarity([embeddings[0]], [embeddings[1]])[0][0])
             return _clamp(semantic_raw, 0.0, 1.0)
         except Exception as exc:
             log.warning("embedding_match_fallback reason=%s", str(exc))
@@ -290,40 +298,194 @@ class DocumentMatchService:
             return 0.0
         return _clamp(intersection / union, 0.0, 1.0)
 
-    def _generate_executive_summary(self, score, skills, cv_exp, jd_exp):
-        summary = f"Dựa trên đánh giá từ góc độ Tuyển dụng Kỹ thuật cao cấp, ứng viên đạt mức độ phù hợp {score}%. "
-        if score >= 75:
-            summary += "Đây là một hồ sơ tiềm năng với nền tảng kỹ thuật vững chắc. Ứng viên thể hiện sự am hiểu sâu sắc về các công nghệ cốt lõi và có kinh nghiệm thực tế phù hợp."
-        else:
-            summary += "Hồ sơ này còn một số khoảng cách đáng kể so với yêu cầu kỳ vọng, đặc biệt là ở mảng kinh nghiệm thực chiến và các kỹ năng bổ trợ cần thiết cho vị trí này."
-        
-        summary += f"\n\nĐiểm đáng chú ý là sự tương quan giữa {cv_exp} năm kinh nghiệm của ứng viên so với mức {jd_exp} năm yêu cầu. Sự thiếu hụt hoặc dư thừa kinh nghiệm này sẽ ảnh hưởng trực tiếp đến khả năng xử lý các bài toán hệ thống phức tạp mà công ty đang đối mặt."
-        
-        return summary
+    def _generate_executive_summary(
+        self,
+        score: float,
+        matched_skills: list[str],
+        cv_exp: int,
+        jd_exp: int,
+        project_example: str,
+    ) -> str:
+        skill_hint = ", ".join(matched_skills[:3]) if matched_skills else "chua co nhieu skill trung khop"
+        exp_hint = (
+            f"kinh nghiem {cv_exp} nam so voi yeu cau {jd_exp} nam"
+            if jd_exp > 0
+            else f"kinh nghiem hien tai khoang {cv_exp} nam"
+        )
+        tone = (
+            "ho so dang rat sat nhu cau"
+            if score >= 75
+            else (
+                "ho so co tiem nang, can bo sung mot vai diem de tang do tin cay"
+                if score >= 50
+                else "ho so can them minh chung thuc te de thuyet phuc hon"
+            )
+        )
+
+        return (
+            f"Tong quan: muc do phu hop hien tai la {score}%, {tone}. "
+            f"Diem sang de khai thac la {skill_hint}; dong thoi can doi chieu them ve {exp_hint}. "
+            f"Vi du du an de nha tuyen dung hinh dung ro hon: {project_example}. "
+            "Neu ban trinh bay duoc ket qua, vai tro, va pham vi anh huong trong du an nay, "
+            "danh gia se tang len ro ret."
+        )
 
     @staticmethod
-    def _generate_summary(
+    def _extract_project_examples(text: str) -> list[str]:
+        raw = str(text or "").strip()
+        if not raw:
+            return []
+
+        sentences = re.split(r"[\n\.\!\?;]+", raw)
+        keywords = {
+            "du an",
+            "project",
+            "xay dung",
+            "thiet ke",
+            "trien khai",
+            "toi uu",
+            "api",
+            "microservice",
+            "docker",
+            "kubernetes",
+            "aws",
+            "gcp",
+            "postgresql",
+            "redis",
+        }
+
+        examples: list[str] = []
+        for sentence in sentences:
+            line = sentence.strip()
+            if len(line) < 20:
+                continue
+            normalized = clean_text(line)
+            if any(keyword in normalized for keyword in keywords):
+                examples.append(line)
+            if len(examples) >= 3:
+                break
+        return examples
+
+    @staticmethod
+    def _pick_project_example(
+        project_examples: list[str],
+        matched_skills: list[str],
+        missing_skills: list[str],
+        jd_skills: list[str],
+    ) -> str:
+        if project_examples:
+            return project_examples[0]
+
+        strong_skills = matched_skills[:2] or jd_skills[:2]
+        if strong_skills:
+            skill_text = ", ".join(strong_skills)
+            return (
+                f"Xay mot module thuc te voi {skill_text}: viet API, ket noi database, "
+                "va trinh bay ro cach toi uu hieu nang hoac xu ly loi."
+            )
+
+        if missing_skills:
+            return (
+                "Thu lam mini-project bo sung cac ky nang con thieu, "
+                "vi du mot API CRUD co logging, test, va docker compose."
+            )
+
+        return (
+            "Mo ta mot du an gan day theo cau truc: bai toan, giai phap ky thuat, "
+            "vai tro cua ban, ket qua do duoc."
+        )
+
+    def _build_deep_experience_alignment(
+        self,
         cv_exp: int,
         jd_exp: int,
         matched_skills: list[str],
         missing_skills: list[str],
-    ) -> str:
-        parts: list[str] = []
-        if matched_skills:
-            parts.append(
-                "Candidate has relevant skills in "
-                + ", ".join(matched_skills[:3])
-                + "."
-            )
-        if jd_exp > 0 and cv_exp >= jd_exp:
-            parts.append(
-                f"Experience ({cv_exp} years) meets JD expectation ({jd_exp} years)."
-            )
-        elif jd_exp > 0:
-            parts.append(
-                f"Experience ({cv_exp} years) is below JD expectation ({jd_exp} years)."
-            )
-        if missing_skills:
-            parts.append("Missing priority skills: " + ", ".join(missing_skills[:3]) + ".")
+        project_example: str,
+    ) -> list[dict[str, str]]:
+        return [
+            {
+                "requirement": (
+                    f"Yeu cau kinh nghiem {jd_exp} nam."
+                    if jd_exp > 0
+                    else "JD khong neu ro so nam kinh nghiem, can minh chung qua du an."
+                ),
+                "candidate_reality": f"Ung vien hien co khoang {cv_exp} nam kinh nghiem.",
+                "severity": "High" if jd_exp > 0 and cv_exp < jd_exp else "Low",
+                "hr_comment": (
+                    f"Vi du de doi chieu: {project_example}. "
+                    "Neu du an co quy mo va do kho tuong duong voi bai toan JD, diem tin cay tang manh."
+                ),
+            },
+            {
+                "requirement": "Do phu hop tech stack voi nhu cau cong viec.",
+                "candidate_reality": (
+                    "Da trung cac ky nang: " + ", ".join(matched_skills[:5])
+                    if matched_skills
+                    else "Chua tim thay ky nang trung khop ro rang tu CV."
+                ),
+                "severity": "Medium" if missing_skills else "Low",
+                "hr_comment": (
+                    "Can viet ro trong mot du an cu the ban da dung nhung stack nay nhu the nao, "
+                    "tranh liet ke chung chung."
+                ),
+            },
+            {
+                "requirement": "Can minh chung tac dong thuc te (impact) trong du an.",
+                "candidate_reality": "CV da co mo ta cong viec, nhung can them KPI/do luong ket qua.",
+                "severity": "Medium",
+                "hr_comment": (
+                    f"Goi y viet theo mau du an: '{project_example}' + ket qua do duoc "
+                    "(VD: giam latency 30%, tang throughput 2x, giam loi production)."
+                ),
+            },
+        ]
 
-        return " ".join(parts).strip() or "Insufficient signal for detailed summary."
+    @staticmethod
+    def _build_actionable_recommendations(
+        matched_skills: list[str],
+        missing_skills: list[str],
+        jd_skills: list[str],
+        project_example: str,
+    ) -> list[dict[str, str]]:
+        prioritized_missing = missing_skills[:3]
+        prioritized_match = matched_skills[:3]
+
+        issue = (
+            "Thieu minh chung ky nang cho nhom: " + ", ".join(prioritized_missing)
+            if prioritized_missing
+            else "Can tang do cu the khi mo ta vai tro va ket qua trong du an."
+        )
+
+        if prioritized_match:
+            solution = (
+                "Hay dung ngay cac ky nang ban da co ("
+                + ", ".join(prioritized_match)
+                + ") de viet lai phan kinh nghiem theo format STAR (Situation-Task-Action-Result)."
+            )
+        elif jd_skills:
+            solution = (
+                "Chon 1-2 ky nang quan trong trong JD ("
+                + ", ".join(jd_skills[:2])
+                + ") va bo sung mini-project de tao minh chung thuc te."
+            )
+        else:
+            solution = (
+                "Bo sung mo ta du an theo huong ket qua do duoc, thay vi mo ta cong viec chung chung."
+            )
+
+        rewrite_example = (
+            "Nen viet: 'Trong du an "
+            + project_example
+            + ", toi phu trach thiet ke API, toi uu truy van, giam thoi gian phan hoi 35%, "
+              "dong thoi them monitoring canh bao loi production'."
+        )
+
+        return [
+            {
+                "issue": issue,
+                "solution": solution,
+                "cv_rewrite_example": rewrite_example,
+            }
+        ]
+
