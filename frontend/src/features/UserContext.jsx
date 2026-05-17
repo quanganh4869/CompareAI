@@ -49,7 +49,7 @@ export const UserProvider = ({ children }) => {
         tone: "warning",
         title: "Backend",
         message:
-          "Khong ket noi duoc backend. Hay kiem tra API server co dang chay o localhost:8000 khong.",
+          "Không kết nối được backend. Hãy kiểm tra biến VITE_API_BASE_URL và dịch vụ API.",
       });
     } finally {
       setIsLoading(false);
